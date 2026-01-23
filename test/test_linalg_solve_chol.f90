@@ -20,19 +20,27 @@ module test_linalg_solve_chol
         allocate(tests(0))
         
         call add_test(tests,new_unittest("solve_chol_s",test_solve_chol_s))
+        call add_test(tests,new_unittest("solve_chol_upper_s",test_solve_chol_upper_s))
         call add_test(tests,new_unittest("cholesky_solve_s",test_cholesky_solve_s))
+        call add_test(tests,new_unittest("cholesky_solve_upper_s",test_cholesky_solve_upper_s))
         call add_test(tests,new_unittest("cholesky_solve_overwrite_s",test_cholesky_solve_overwrite_s))
         call add_test(tests,new_unittest("solve_chol_multi_rhs_s",test_solve_chol_multi_rhs_s))
         call add_test(tests,new_unittest("solve_chol_d",test_solve_chol_d))
+        call add_test(tests,new_unittest("solve_chol_upper_d",test_solve_chol_upper_d))
         call add_test(tests,new_unittest("cholesky_solve_d",test_cholesky_solve_d))
+        call add_test(tests,new_unittest("cholesky_solve_upper_d",test_cholesky_solve_upper_d))
         call add_test(tests,new_unittest("cholesky_solve_overwrite_d",test_cholesky_solve_overwrite_d))
         call add_test(tests,new_unittest("solve_chol_multi_rhs_d",test_solve_chol_multi_rhs_d))
         call add_test(tests,new_unittest("solve_chol_c",test_solve_chol_c))
+        call add_test(tests,new_unittest("solve_chol_upper_c",test_solve_chol_upper_c))
         call add_test(tests,new_unittest("cholesky_solve_c",test_cholesky_solve_c))
+        call add_test(tests,new_unittest("cholesky_solve_upper_c",test_cholesky_solve_upper_c))
         call add_test(tests,new_unittest("cholesky_solve_overwrite_c",test_cholesky_solve_overwrite_c))
         call add_test(tests,new_unittest("solve_chol_multi_rhs_c",test_solve_chol_multi_rhs_c))
         call add_test(tests,new_unittest("solve_chol_z",test_solve_chol_z))
+        call add_test(tests,new_unittest("solve_chol_upper_z",test_solve_chol_upper_z))
         call add_test(tests,new_unittest("cholesky_solve_z",test_cholesky_solve_z))
+        call add_test(tests,new_unittest("cholesky_solve_upper_z",test_cholesky_solve_upper_z))
         call add_test(tests,new_unittest("cholesky_solve_overwrite_z",test_cholesky_solve_overwrite_z))
         call add_test(tests,new_unittest("solve_chol_multi_rhs_z",test_solve_chol_multi_rhs_z))
 
@@ -188,6 +196,156 @@ module test_linalg_solve_chol
     end subroutine test_solve_chol_z
     
 
+    !> Test solve_chol with upper triangular factors (lower=.false.)
+    subroutine test_solve_chol_upper_s(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        integer(ilp), parameter :: n = 3_ilp
+        real(sp), parameter :: tol = 100*sqrt(epsilon(0.0_sp))
+        real(sp) :: a(n,n), u(n,n), b(n), x(n), x_expected(n)
+        type(linalg_state_type) :: state
+        
+        ! Set symmetric positive definite matrix
+        a(1,:) = [4, 2, 2]
+        a(2,:) = [2, 5, 1]
+        a(3,:) = [2, 1, 6]
+        
+        ! Known solution
+        x_expected = [1, 2, 3]
+        
+        ! Compute RHS: b = A * x_expected
+        b = matmul(a, x_expected)
+        
+        ! Compute Cholesky factorization (upper triangular: A = U^T * U)
+        call cholesky(a, u, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'cholesky factorization (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Solve using upper Cholesky factors
+        call solve_chol(u, b, x, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'solve_chol (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Check solution
+        call check(error, all(abs(x - x_expected) < tol), 'solve_chol (upper): solution mismatch')
+        if (allocated(error)) return
+        
+    end subroutine test_solve_chol_upper_s
+    
+    subroutine test_solve_chol_upper_d(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        integer(ilp), parameter :: n = 3_ilp
+        real(dp), parameter :: tol = 100*sqrt(epsilon(0.0_dp))
+        real(dp) :: a(n,n), u(n,n), b(n), x(n), x_expected(n)
+        type(linalg_state_type) :: state
+        
+        ! Set symmetric positive definite matrix
+        a(1,:) = [4, 2, 2]
+        a(2,:) = [2, 5, 1]
+        a(3,:) = [2, 1, 6]
+        
+        ! Known solution
+        x_expected = [1, 2, 3]
+        
+        ! Compute RHS: b = A * x_expected
+        b = matmul(a, x_expected)
+        
+        ! Compute Cholesky factorization (upper triangular: A = U^T * U)
+        call cholesky(a, u, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'cholesky factorization (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Solve using upper Cholesky factors
+        call solve_chol(u, b, x, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'solve_chol (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Check solution
+        call check(error, all(abs(x - x_expected) < tol), 'solve_chol (upper): solution mismatch')
+        if (allocated(error)) return
+        
+    end subroutine test_solve_chol_upper_d
+    
+    subroutine test_solve_chol_upper_c(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        integer(ilp), parameter :: n = 3_ilp
+        real(sp), parameter :: tol = 100*sqrt(epsilon(0.0_sp))
+        complex(sp) :: a(n,n), u(n,n), b(n), x(n), x_expected(n)
+        type(linalg_state_type) :: state
+        
+        ! Set symmetric positive definite matrix
+        a(1,:) = [4, 2, 2]
+        a(2,:) = [2, 5, 1]
+        a(3,:) = [2, 1, 6]
+        
+        ! Known solution
+        x_expected = [1, 2, 3]
+        
+        ! Compute RHS: b = A * x_expected
+        b = matmul(a, x_expected)
+        
+        ! Compute Cholesky factorization (upper triangular: A = U^T * U)
+        call cholesky(a, u, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'cholesky factorization (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Solve using upper Cholesky factors
+        call solve_chol(u, b, x, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'solve_chol (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Check solution
+        call check(error, all(abs(x - x_expected) < tol), 'solve_chol (upper): solution mismatch')
+        if (allocated(error)) return
+        
+    end subroutine test_solve_chol_upper_c
+    
+    subroutine test_solve_chol_upper_z(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        integer(ilp), parameter :: n = 3_ilp
+        real(dp), parameter :: tol = 100*sqrt(epsilon(0.0_dp))
+        complex(dp) :: a(n,n), u(n,n), b(n), x(n), x_expected(n)
+        type(linalg_state_type) :: state
+        
+        ! Set symmetric positive definite matrix
+        a(1,:) = [4, 2, 2]
+        a(2,:) = [2, 5, 1]
+        a(3,:) = [2, 1, 6]
+        
+        ! Known solution
+        x_expected = [1, 2, 3]
+        
+        ! Compute RHS: b = A * x_expected
+        b = matmul(a, x_expected)
+        
+        ! Compute Cholesky factorization (upper triangular: A = U^T * U)
+        call cholesky(a, u, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'cholesky factorization (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Solve using upper Cholesky factors
+        call solve_chol(u, b, x, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'solve_chol (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Check solution
+        call check(error, all(abs(x - x_expected) < tol), 'solve_chol (upper): solution mismatch')
+        if (allocated(error)) return
+        
+    end subroutine test_solve_chol_upper_z
+    
+
     !> Test cholesky_solve (one-shot) - default preserves A
     subroutine test_cholesky_solve_s(error)
         type(error_type), allocatable, intent(out) :: error
@@ -332,6 +490,152 @@ module test_linalg_solve_chol
         if (allocated(error)) return
         
     end subroutine test_cholesky_solve_z
+    
+
+    !> Test cholesky_solve with upper triangular (lower=.false.)
+    subroutine test_cholesky_solve_upper_s(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        integer(ilp), parameter :: n = 3_ilp
+        real(sp), parameter :: tol = 100*sqrt(epsilon(0.0_sp))
+        real(sp) :: a(n,n), a_copy(n,n), b(n), x(n), x_expected(n)
+        type(linalg_state_type) :: state
+        
+        ! Set symmetric positive definite matrix
+        a(1,:) = [4, 2, 2]
+        a(2,:) = [2, 5, 1]
+        a(3,:) = [2, 1, 6]
+        a_copy = a
+        
+        ! Known solution
+        x_expected = [1, 2, 3]
+        
+        ! Compute RHS: b = A * x_expected
+        b = matmul(a, x_expected)
+        
+        ! One-shot solve with upper triangular (A should be preserved by default)
+        call cholesky_solve(a, b, x, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'cholesky_solve (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Check solution
+        call check(error, all(abs(x - x_expected) < tol), 'cholesky_solve (upper): solution mismatch')
+        if (allocated(error)) return
+        
+        ! Check that A is preserved (default behavior)
+        call check(error, all(abs(a - a_copy) < tol), 'cholesky_solve (upper): A should be preserved')
+        if (allocated(error)) return
+        
+    end subroutine test_cholesky_solve_upper_s
+    
+    subroutine test_cholesky_solve_upper_d(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        integer(ilp), parameter :: n = 3_ilp
+        real(dp), parameter :: tol = 100*sqrt(epsilon(0.0_dp))
+        real(dp) :: a(n,n), a_copy(n,n), b(n), x(n), x_expected(n)
+        type(linalg_state_type) :: state
+        
+        ! Set symmetric positive definite matrix
+        a(1,:) = [4, 2, 2]
+        a(2,:) = [2, 5, 1]
+        a(3,:) = [2, 1, 6]
+        a_copy = a
+        
+        ! Known solution
+        x_expected = [1, 2, 3]
+        
+        ! Compute RHS: b = A * x_expected
+        b = matmul(a, x_expected)
+        
+        ! One-shot solve with upper triangular (A should be preserved by default)
+        call cholesky_solve(a, b, x, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'cholesky_solve (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Check solution
+        call check(error, all(abs(x - x_expected) < tol), 'cholesky_solve (upper): solution mismatch')
+        if (allocated(error)) return
+        
+        ! Check that A is preserved (default behavior)
+        call check(error, all(abs(a - a_copy) < tol), 'cholesky_solve (upper): A should be preserved')
+        if (allocated(error)) return
+        
+    end subroutine test_cholesky_solve_upper_d
+    
+    subroutine test_cholesky_solve_upper_c(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        integer(ilp), parameter :: n = 3_ilp
+        real(sp), parameter :: tol = 100*sqrt(epsilon(0.0_sp))
+        complex(sp) :: a(n,n), a_copy(n,n), b(n), x(n), x_expected(n)
+        type(linalg_state_type) :: state
+        
+        ! Set symmetric positive definite matrix
+        a(1,:) = [4, 2, 2]
+        a(2,:) = [2, 5, 1]
+        a(3,:) = [2, 1, 6]
+        a_copy = a
+        
+        ! Known solution
+        x_expected = [1, 2, 3]
+        
+        ! Compute RHS: b = A * x_expected
+        b = matmul(a, x_expected)
+        
+        ! One-shot solve with upper triangular (A should be preserved by default)
+        call cholesky_solve(a, b, x, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'cholesky_solve (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Check solution
+        call check(error, all(abs(x - x_expected) < tol), 'cholesky_solve (upper): solution mismatch')
+        if (allocated(error)) return
+        
+        ! Check that A is preserved (default behavior)
+        call check(error, all(abs(a - a_copy) < tol), 'cholesky_solve (upper): A should be preserved')
+        if (allocated(error)) return
+        
+    end subroutine test_cholesky_solve_upper_c
+    
+    subroutine test_cholesky_solve_upper_z(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        integer(ilp), parameter :: n = 3_ilp
+        real(dp), parameter :: tol = 100*sqrt(epsilon(0.0_dp))
+        complex(dp) :: a(n,n), a_copy(n,n), b(n), x(n), x_expected(n)
+        type(linalg_state_type) :: state
+        
+        ! Set symmetric positive definite matrix
+        a(1,:) = [4, 2, 2]
+        a(2,:) = [2, 5, 1]
+        a(3,:) = [2, 1, 6]
+        a_copy = a
+        
+        ! Known solution
+        x_expected = [1, 2, 3]
+        
+        ! Compute RHS: b = A * x_expected
+        b = matmul(a, x_expected)
+        
+        ! One-shot solve with upper triangular (A should be preserved by default)
+        call cholesky_solve(a, b, x, lower=.false., err=state)
+        
+        call check(error, state%ok(), 'cholesky_solve (upper) failed: '//state%print())
+        if (allocated(error)) return
+        
+        ! Check solution
+        call check(error, all(abs(x - x_expected) < tol), 'cholesky_solve (upper): solution mismatch')
+        if (allocated(error)) return
+        
+        ! Check that A is preserved (default behavior)
+        call check(error, all(abs(a - a_copy) < tol), 'cholesky_solve (upper): A should be preserved')
+        if (allocated(error)) return
+        
+    end subroutine test_cholesky_solve_upper_z
     
 
     !> Test cholesky_solve with overwrite_a=.true.

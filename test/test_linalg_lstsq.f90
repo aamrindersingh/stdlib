@@ -171,33 +171,46 @@ module test_linalg_least_squares
     !-----     Weighted Least-Squares Tests                  -----
     !-------------------------------------------------------------
 
-    !> Test basic weighted least-squares
+    !> Test basic weighted least-squares: uniform weights must match ordinary least-squares
     subroutine test_weighted_lstsq_s(error)
         type(error_type), allocatable, intent(out) :: error
 
         type(linalg_state_type) :: state
         integer(ilp), parameter :: m = 4, n = 2
         real(sp), parameter :: tol = 100*sqrt(epsilon(0.0_sp))
-        real(sp) :: A(m,n), b(m)
+        real(sp) :: A(m,n), A_original(m,n), A_copy(m,n), b(m)
         real(sp) :: w(m)
-        real(sp), allocatable :: x(:)
+        real(sp), allocatable :: x_weighted(:), x_ols(:)
 
         ! Simple test case
         A(:,1) = 1.0_sp
         A(:,2) = [1.0_sp, 2.0_sp, 3.0_sp, 4.0_sp]
         b = [2.0_sp, 4.0_sp, 5.0_sp, 4.0_sp]
-        w = [1.0_sp, 1.0_sp, 1.0_sp, 1.0_sp]  ! Uniform weights = OLS
+        w = 1.0_sp  ! Uniform weights = OLS
+        A_original = A  ! Save original to verify A is preserved
+        A_copy = A      ! Save copy for lstsq comparison (lstsq may overwrite)
 
-        x = weighted_lstsq(w, A, b, err=state)
+        x_weighted = weighted_lstsq(w, A, b, err=state)
 
         call check(error, state%ok(), 'weighted_lstsq failed: '//state%print())
         if (allocated(error)) return
         
-        call check(error, size(x)==n, 'weighted_lstsq: wrong solution size')
+        call check(error, size(x_weighted)==n, 'weighted_lstsq: wrong solution size')
         if (allocated(error)) return
 
-        ! Verify residual is small
-        call check(error, norm2(matmul(A,x) - b) < 2.0_sp, 'weighted_lstsq: residual too large')
+        ! Verify A is preserved by default (overwrite_a contract)
+        call check(error, all(A == A_original), &
+                   'weighted_lstsq must preserve A by default')
+        if (allocated(error)) return
+
+        ! KEY TEST: Uniform weights should match ordinary least squares exactly
+        x_ols = lstsq(A_copy, b, err=state)
+
+        call check(error, state%ok(), 'lstsq failed: '//state%print())
+        if (allocated(error)) return
+
+        call check(error, all(abs(x_weighted - x_ols) < tol), &
+                   'weighted_lstsq with uniform weights must match lstsq')
         if (allocated(error)) return
 
     end subroutine test_weighted_lstsq_s
@@ -256,33 +269,46 @@ module test_linalg_least_squares
 
     end subroutine test_weighted_lstsq_negative_s
 
-    !> Test basic weighted least-squares
+    !> Test basic weighted least-squares: uniform weights must match ordinary least-squares
     subroutine test_weighted_lstsq_d(error)
         type(error_type), allocatable, intent(out) :: error
 
         type(linalg_state_type) :: state
         integer(ilp), parameter :: m = 4, n = 2
         real(dp), parameter :: tol = 100*sqrt(epsilon(0.0_dp))
-        real(dp) :: A(m,n), b(m)
+        real(dp) :: A(m,n), A_original(m,n), A_copy(m,n), b(m)
         real(dp) :: w(m)
-        real(dp), allocatable :: x(:)
+        real(dp), allocatable :: x_weighted(:), x_ols(:)
 
         ! Simple test case
         A(:,1) = 1.0_dp
         A(:,2) = [1.0_dp, 2.0_dp, 3.0_dp, 4.0_dp]
         b = [2.0_dp, 4.0_dp, 5.0_dp, 4.0_dp]
-        w = [1.0_dp, 1.0_dp, 1.0_dp, 1.0_dp]  ! Uniform weights = OLS
+        w = 1.0_dp  ! Uniform weights = OLS
+        A_original = A  ! Save original to verify A is preserved
+        A_copy = A      ! Save copy for lstsq comparison (lstsq may overwrite)
 
-        x = weighted_lstsq(w, A, b, err=state)
+        x_weighted = weighted_lstsq(w, A, b, err=state)
 
         call check(error, state%ok(), 'weighted_lstsq failed: '//state%print())
         if (allocated(error)) return
         
-        call check(error, size(x)==n, 'weighted_lstsq: wrong solution size')
+        call check(error, size(x_weighted)==n, 'weighted_lstsq: wrong solution size')
         if (allocated(error)) return
 
-        ! Verify residual is small
-        call check(error, norm2(matmul(A,x) - b) < 2.0_dp, 'weighted_lstsq: residual too large')
+        ! Verify A is preserved by default (overwrite_a contract)
+        call check(error, all(A == A_original), &
+                   'weighted_lstsq must preserve A by default')
+        if (allocated(error)) return
+
+        ! KEY TEST: Uniform weights should match ordinary least squares exactly
+        x_ols = lstsq(A_copy, b, err=state)
+
+        call check(error, state%ok(), 'lstsq failed: '//state%print())
+        if (allocated(error)) return
+
+        call check(error, all(abs(x_weighted - x_ols) < tol), &
+                   'weighted_lstsq with uniform weights must match lstsq')
         if (allocated(error)) return
 
     end subroutine test_weighted_lstsq_d

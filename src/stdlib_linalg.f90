@@ -30,7 +30,7 @@ module stdlib_linalg
   public :: lstsq_space
   public :: constrained_lstsq
   public :: constrained_lstsq_space
-  public :: generalized_lstsq
+  public :: weighted_lstsq
   public :: norm
   public :: mnorm
   public :: get_norm
@@ -1679,89 +1679,99 @@ module stdlib_linalg
     end subroutine stdlib_linalg_z_constrained_lstsq_space
   end interface
 
-  interface generalized_lstsq
+  ! Weighted least-squares: minimize ||D(Ax - b)||^2 where D = diag(sqrt(w))
+  interface weighted_lstsq
     !! version: experimental
     !!
-    !! Computes the generalized least-squares solution to \( \min_x (Ax-b)^T W^{-1} (Ax-b) \)
-    !! ([Specification](../page/specs/stdlib_linalg.html#generalized-lstsq))
+    !! Computes the weighted least-squares solution to \( \min_x \|D(Ax - b)\|_2^2 \)
+    !! ([Specification](../page/specs/stdlib_linalg.html#weighted-lstsq))
     !!
     !!### Summary
-    !! Function interface for computing generalized least-squares via GGGLM.
+    !! Function interface for computing weighted least-squares via row scaling.
     !!
     !!### Description
     !!
-    !! This interface provides methods for computing generalized least-squares
-    !! with a symmetric (real) or Hermitian (complex) positive definite covariance matrix.
+    !! This interface provides methods for computing weighted least-squares by
+    !! transforming to ordinary least-squares through row scaling.
     !! Supported data types include `real` and `complex`.
     !!
-    !!@note The solution is based on LAPACK's `*GGGLM` routine.
-    !!@note The covariance matrix W is always preserved (copied internally).
+    !!@note The solution is based on LAPACK's `*GELSD` after applying diagonal weights.
+    !!@warning Avoid extreme weight ratios (e.g., max(w)/min(w) > 1e6) as this may 
+    !!         cause loss of precision in the SVD-based solver.
     !!
-    module function stdlib_linalg_s_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,err) result(x)
-        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its lower triangular Cholesky factor
-        real(sp), intent(in) :: w(:,:)
+    module function stdlib_linalg_s_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
+        !> Weight vector (must be positive, always real)
+        real(sp), intent(in) :: w(:)
         !> Input matrix a[m,n]
         real(sp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         real(sp), intent(in) :: b(:)
-        !> [optional] Is W already Cholesky-factored? Default: .false.
-        logical(lk), optional, intent(in) :: prefactored_w
+        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
+        real(sp), optional, intent(in) :: cond
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
+        !> [optional] Return rank of A
+        integer(ilp), optional, intent(out) :: rank
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
         real(sp), allocatable :: x(:)
-    end function stdlib_linalg_s_generalized_lstsq
-    module function stdlib_linalg_d_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,err) result(x)
-        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its lower triangular Cholesky factor
-        real(dp), intent(in) :: w(:,:)
+    end function stdlib_linalg_s_weighted_lstsq
+    module function stdlib_linalg_d_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
+        !> Weight vector (must be positive, always real)
+        real(dp), intent(in) :: w(:)
         !> Input matrix a[m,n]
         real(dp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         real(dp), intent(in) :: b(:)
-        !> [optional] Is W already Cholesky-factored? Default: .false.
-        logical(lk), optional, intent(in) :: prefactored_w
+        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
+        real(dp), optional, intent(in) :: cond
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
+        !> [optional] Return rank of A
+        integer(ilp), optional, intent(out) :: rank
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
         real(dp), allocatable :: x(:)
-    end function stdlib_linalg_d_generalized_lstsq
-    module function stdlib_linalg_c_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,err) result(x)
-        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its lower triangular Cholesky factor
-        complex(sp), intent(in) :: w(:,:)
+    end function stdlib_linalg_d_weighted_lstsq
+    module function stdlib_linalg_c_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
+        !> Weight vector (must be positive, always real)
+        real(sp), intent(in) :: w(:)
         !> Input matrix a[m,n]
         complex(sp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         complex(sp), intent(in) :: b(:)
-        !> [optional] Is W already Cholesky-factored? Default: .false.
-        logical(lk), optional, intent(in) :: prefactored_w
+        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
+        real(sp), optional, intent(in) :: cond
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
+        !> [optional] Return rank of A
+        integer(ilp), optional, intent(out) :: rank
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
         complex(sp), allocatable :: x(:)
-    end function stdlib_linalg_c_generalized_lstsq
-    module function stdlib_linalg_z_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,err) result(x)
-        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its lower triangular Cholesky factor
-        complex(dp), intent(in) :: w(:,:)
+    end function stdlib_linalg_c_weighted_lstsq
+    module function stdlib_linalg_z_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
+        !> Weight vector (must be positive, always real)
+        real(dp), intent(in) :: w(:)
         !> Input matrix a[m,n]
         complex(dp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         complex(dp), intent(in) :: b(:)
-        !> [optional] Is W already Cholesky-factored? Default: .false.
-        logical(lk), optional, intent(in) :: prefactored_w
+        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
+        real(dp), optional, intent(in) :: cond
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
+        !> [optional] Return rank of A
+        integer(ilp), optional, intent(out) :: rank
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
         complex(dp), allocatable :: x(:)
-    end function stdlib_linalg_z_generalized_lstsq
-  end interface generalized_lstsq
+    end function stdlib_linalg_z_weighted_lstsq
+  end interface weighted_lstsq
 
   ! QR factorization of rank-2 array A
   interface qr

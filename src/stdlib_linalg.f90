@@ -1691,14 +1691,14 @@ module stdlib_linalg
     !!### Description
     !!
     !! This interface provides methods for computing generalized least-squares
-    !! with a symmetric positive definite covariance matrix.
+    !! with a symmetric (real) or Hermitian (complex) positive definite covariance matrix.
     !! Supported data types include `real` and `complex`.
     !!
     !!@note The solution is based on LAPACK's `*GGGLM` routine.
     !!@note The covariance matrix W is always preserved (copied internally).
     !!
     module function stdlib_linalg_s_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,err) result(x)
-        !> Covariance matrix W[m,m] (SPD) or its lower triangular Cholesky factor
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its lower triangular Cholesky factor
         real(sp), intent(in) :: w(:,:)
         !> Input matrix a[m,n]
         real(sp), intent(inout), target :: a(:,:)
@@ -1714,7 +1714,7 @@ module stdlib_linalg
         real(sp), allocatable :: x(:)
     end function stdlib_linalg_s_generalized_lstsq
     module function stdlib_linalg_d_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,err) result(x)
-        !> Covariance matrix W[m,m] (SPD) or its lower triangular Cholesky factor
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its lower triangular Cholesky factor
         real(dp), intent(in) :: w(:,:)
         !> Input matrix a[m,n]
         real(dp), intent(inout), target :: a(:,:)
@@ -1730,7 +1730,7 @@ module stdlib_linalg
         real(dp), allocatable :: x(:)
     end function stdlib_linalg_d_generalized_lstsq
     module function stdlib_linalg_c_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,err) result(x)
-        !> Covariance matrix W[m,m] (SPD) or its lower triangular Cholesky factor
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its lower triangular Cholesky factor
         complex(sp), intent(in) :: w(:,:)
         !> Input matrix a[m,n]
         complex(sp), intent(inout), target :: a(:,:)
@@ -1746,7 +1746,7 @@ module stdlib_linalg
         complex(sp), allocatable :: x(:)
     end function stdlib_linalg_c_generalized_lstsq
     module function stdlib_linalg_z_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,err) result(x)
-        !> Covariance matrix W[m,m] (SPD) or its lower triangular Cholesky factor
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its lower triangular Cholesky factor
         complex(dp), intent(in) :: w(:,:)
         !> Input matrix a[m,n]
         complex(dp), intent(inout), target :: a(:,:)

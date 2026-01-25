@@ -2969,7 +2969,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         b_scaled = sqrt_w * b
 
         ! Solve transformed OLS problem
-        x = stdlib_linalg_s_lstsq_one(amat, b_scaled, cond=cond, overwrite_a=.true., rank=rank, err=err)
+        call stdlib_linalg_s_solve_lstsq_one(amat, b_scaled, x, cond=cond, overwrite_a=.true., rank=rank, err=err)
 
         ! Cleanup
         if (copy_a) deallocate(amat_alloc)
@@ -3072,7 +3072,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         b_scaled = sqrt_w * b
 
         ! Solve transformed OLS problem
-        x = stdlib_linalg_d_lstsq_one(amat, b_scaled, cond=cond, overwrite_a=.true., rank=rank, err=err)
+        call stdlib_linalg_d_solve_lstsq_one(amat, b_scaled, x, cond=cond, overwrite_a=.true., rank=rank, err=err)
 
         ! Cleanup
         if (copy_a) deallocate(amat_alloc)
@@ -3175,7 +3175,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         b_scaled = sqrt_w * b
 
         ! Solve transformed OLS problem
-        x = stdlib_linalg_c_lstsq_one(amat, b_scaled, cond=cond, overwrite_a=.true., rank=rank, err=err)
+        call stdlib_linalg_c_solve_lstsq_one(amat, b_scaled, x, cond=cond, overwrite_a=.true., rank=rank, err=err)
 
         ! Cleanup
         if (copy_a) deallocate(amat_alloc)
@@ -3278,7 +3278,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         b_scaled = sqrt_w * b
 
         ! Solve transformed OLS problem
-        x = stdlib_linalg_z_lstsq_one(amat, b_scaled, cond=cond, overwrite_a=.true., rank=rank, err=err)
+        call stdlib_linalg_z_solve_lstsq_one(amat, b_scaled, x, cond=cond, overwrite_a=.true., rank=rank, err=err)
 
         ! Cleanup
         if (copy_a) deallocate(amat_alloc)

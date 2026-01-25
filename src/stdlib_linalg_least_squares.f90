@@ -2897,6 +2897,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         real(sp), pointer :: amat(:,:)
         real(sp), allocatable, target :: amat_alloc(:,:)
         real(sp), allocatable :: lmat(:,:), d(:), y(:), work(:)
+        real(sp), parameter :: zero = 0.0_sp
         character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
@@ -2958,7 +2959,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         allocate(lmat(m, m), source=w)
 
         if (.not. is_prefactored) then
-            ! Compute Cholesky factorization: W = L * L^T
+            ! Compute Cholesky factorization: W = L * L^T (real) or W = L * L^H (complex)
             call potrf('L', m, lmat, m, info)
             if (info /= 0) then
                 if (info > 0) then
@@ -2987,7 +2988,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         ! but potrf only sets lower triangle)
         do j = 1, m
             do i = 1, j - 1
-                lmat(i, j) = 0.0_sp
+                lmat(i, j) = zero
             end do
         end do
 
@@ -3035,6 +3036,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         real(dp), pointer :: amat(:,:)
         real(dp), allocatable, target :: amat_alloc(:,:)
         real(dp), allocatable :: lmat(:,:), d(:), y(:), work(:)
+        real(dp), parameter :: zero = 0.0_dp
         character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
@@ -3096,7 +3098,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         allocate(lmat(m, m), source=w)
 
         if (.not. is_prefactored) then
-            ! Compute Cholesky factorization: W = L * L^T
+            ! Compute Cholesky factorization: W = L * L^T (real) or W = L * L^H (complex)
             call potrf('L', m, lmat, m, info)
             if (info /= 0) then
                 if (info > 0) then
@@ -3125,7 +3127,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         ! but potrf only sets lower triangle)
         do j = 1, m
             do i = 1, j - 1
-                lmat(i, j) = 0.0_dp
+                lmat(i, j) = zero
             end do
         end do
 
@@ -3173,6 +3175,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         complex(sp), pointer :: amat(:,:)
         complex(sp), allocatable, target :: amat_alloc(:,:)
         complex(sp), allocatable :: lmat(:,:), d(:), y(:), work(:)
+        complex(sp), parameter :: zero = 0.0_sp
         character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
@@ -3234,7 +3237,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         allocate(lmat(m, m), source=w)
 
         if (.not. is_prefactored) then
-            ! Compute Cholesky factorization: W = L * L^T
+            ! Compute Cholesky factorization: W = L * L^T (real) or W = L * L^H (complex)
             call potrf('L', m, lmat, m, info)
             if (info /= 0) then
                 if (info > 0) then
@@ -3263,7 +3266,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         ! but potrf only sets lower triangle)
         do j = 1, m
             do i = 1, j - 1
-                lmat(i, j) = 0.0_sp
+                lmat(i, j) = zero
             end do
         end do
 
@@ -3311,6 +3314,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         complex(dp), pointer :: amat(:,:)
         complex(dp), allocatable, target :: amat_alloc(:,:)
         complex(dp), allocatable :: lmat(:,:), d(:), y(:), work(:)
+        complex(dp), parameter :: zero = 0.0_dp
         character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
@@ -3372,7 +3376,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         allocate(lmat(m, m), source=w)
 
         if (.not. is_prefactored) then
-            ! Compute Cholesky factorization: W = L * L^T
+            ! Compute Cholesky factorization: W = L * L^T (real) or W = L * L^H (complex)
             call potrf('L', m, lmat, m, info)
             if (info /= 0) then
                 if (info > 0) then
@@ -3401,7 +3405,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         ! but potrf only sets lower triangle)
         do j = 1, m
             do i = 1, j - 1
-                lmat(i, j) = 0.0_dp
+                lmat(i, j) = zero
             end do
         end do
 

@@ -30,12 +30,13 @@ module stdlib_linalg
   public :: lstsq_space
   public :: constrained_lstsq
   public :: constrained_lstsq_space
-  public :: weighted_lstsq
   public :: norm
   public :: mnorm
   public :: get_norm
   public :: solve
-  public :: solve_lu  
+  public :: solve_lu
+  public :: solve_chol
+  public :: cholesky_solve
   public :: solve_lstsq
   public :: solve_constrained_lstsq
   public :: trace
@@ -1043,6 +1044,262 @@ module stdlib_linalg
          type(linalg_state_type), optional, intent(out) :: err
      end subroutine stdlib_linalg_z_solve_lu_many
   end interface solve_lu     
+
+  ! Solve linear system Ax = b using pre-computed Cholesky decomposition (subroutine interface)
+  interface solve_chol
+     !! version: experimental 
+     !!
+     !! Solves the linear system \( A \cdot x = b \) for the unknown vector \( x \) from a 
+     !! symmetric positive definite matrix \( A \) that has been pre-factorized using Cholesky.
+     !! ([Specification](../page/specs/stdlib_linalg.html#solve_chol-solve-a-linear-system-using-cholesky-factors))
+     !!
+     !!### Summary 
+     !! Subroutine interface for solving a linear system using pre-computed Cholesky factors.
+     !!
+     !!### Description
+     !! 
+     !! This interface provides methods for computing the solution of a linear matrix system using
+     !! Cholesky factors. Supported data types include `real` and `complex`. Preallocated space 
+     !! for the solution vector `x` is user-provided. The `lower` argument is REQUIRED and must 
+     !! match the `lower` used during the Cholesky factorization.
+     !! The function can solve simultaneously either one (from a 1-d right-hand-side vector `b(:)`) 
+     !! or several (from a 2-d right-hand-side vector `b(:,:)`) systems.
+     !! 
+     !!@note The solution is based on LAPACK's `*POTRS` routines.
+     !!        
+     pure module subroutine stdlib_linalg_s_solve_chol_one(a,b,x,lower,err)     
+         !> Input matrix a[n,n] containing Cholesky factors from cholesky
+         real(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(sp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(sp), intent(inout), contiguous, target :: x(:)
+         !> Is the lower triangular factor stored? (REQUIRED)
+         logical(lk), intent(in) :: lower
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_s_solve_chol_one
+     pure module subroutine stdlib_linalg_d_solve_chol_one(a,b,x,lower,err)     
+         !> Input matrix a[n,n] containing Cholesky factors from cholesky
+         real(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(dp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(dp), intent(inout), contiguous, target :: x(:)
+         !> Is the lower triangular factor stored? (REQUIRED)
+         logical(lk), intent(in) :: lower
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_d_solve_chol_one
+     pure module subroutine stdlib_linalg_c_solve_chol_one(a,b,x,lower,err)     
+         !> Input matrix a[n,n] containing Cholesky factors from cholesky
+         complex(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(sp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(sp), intent(inout), contiguous, target :: x(:)
+         !> Is the lower triangular factor stored? (REQUIRED)
+         logical(lk), intent(in) :: lower
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_c_solve_chol_one
+     pure module subroutine stdlib_linalg_z_solve_chol_one(a,b,x,lower,err)     
+         !> Input matrix a[n,n] containing Cholesky factors from cholesky
+         complex(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(dp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(dp), intent(inout), contiguous, target :: x(:)
+         !> Is the lower triangular factor stored? (REQUIRED)
+         logical(lk), intent(in) :: lower
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_z_solve_chol_one
+     pure module subroutine stdlib_linalg_s_solve_chol_many(a,b,x,lower,err)     
+         !> Input matrix a[n,n] containing Cholesky factors from cholesky
+         real(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(sp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(sp), intent(inout), contiguous, target :: x(:,:)
+         !> Is the lower triangular factor stored? (REQUIRED)
+         logical(lk), intent(in) :: lower
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_s_solve_chol_many
+     pure module subroutine stdlib_linalg_d_solve_chol_many(a,b,x,lower,err)     
+         !> Input matrix a[n,n] containing Cholesky factors from cholesky
+         real(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(dp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(dp), intent(inout), contiguous, target :: x(:,:)
+         !> Is the lower triangular factor stored? (REQUIRED)
+         logical(lk), intent(in) :: lower
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_d_solve_chol_many
+     pure module subroutine stdlib_linalg_c_solve_chol_many(a,b,x,lower,err)     
+         !> Input matrix a[n,n] containing Cholesky factors from cholesky
+         complex(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(sp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(sp), intent(inout), contiguous, target :: x(:,:)
+         !> Is the lower triangular factor stored? (REQUIRED)
+         logical(lk), intent(in) :: lower
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_c_solve_chol_many
+     pure module subroutine stdlib_linalg_z_solve_chol_many(a,b,x,lower,err)     
+         !> Input matrix a[n,n] containing Cholesky factors from cholesky
+         complex(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(dp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(dp), intent(inout), contiguous, target :: x(:,:)
+         !> Is the lower triangular factor stored? (REQUIRED)
+         logical(lk), intent(in) :: lower
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_z_solve_chol_many
+  end interface solve_chol
+
+  ! One-shot Cholesky factorization and solve (convenience wrapper using POSV)
+  interface cholesky_solve
+     !! version: experimental 
+     !!
+     !! Solves the linear system \( A \cdot x = b \) for the unknown vector \( x \) from a 
+     !! symmetric positive definite matrix \( A \). Combines factorization and solve in one call.
+     !! ([Specification](../page/specs/stdlib_linalg.html#cholesky_solve-one-shot-cholesky-solve))
+     !!
+     !!### Summary 
+     !! One-shot factorization and solve for SPD systems (wraps LAPACK POSV).
+     !!
+     !!### Description
+     !! 
+     !! This interface computes both the Cholesky factorization and solves the linear system
+     !! in a single call. Use this for one-time solves. For repeated solves with the same 
+     !! matrix but different RHS, use `cholesky` + `solve_chol` for better performance.
+     !! Supported data types include `real` and `complex`.
+     !! By default, A is not overwritten. Set `overwrite_a=.true.` to allow in-place 
+     !! factorization for better performance.
+     !! 
+     !!@note The solution is based on LAPACK's `*POSV` routines.
+     !!        
+     pure module subroutine stdlib_linalg_s_cholesky_solve_one(a,b,x,lower,overwrite_a,err)     
+         !> Input SPD matrix a[n,n]
+         real(sp), intent(inout), target :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(sp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(sp), intent(inout), contiguous, target :: x(:)
+         !> [optional] Use lower triangular factorization? Default = .true.
+         logical(lk), optional, intent(in) :: lower
+         !> [optional] Can A data be overwritten and destroyed? Default = .false.
+         logical(lk), optional, intent(in) :: overwrite_a
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_s_cholesky_solve_one
+     pure module subroutine stdlib_linalg_d_cholesky_solve_one(a,b,x,lower,overwrite_a,err)     
+         !> Input SPD matrix a[n,n]
+         real(dp), intent(inout), target :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(dp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(dp), intent(inout), contiguous, target :: x(:)
+         !> [optional] Use lower triangular factorization? Default = .true.
+         logical(lk), optional, intent(in) :: lower
+         !> [optional] Can A data be overwritten and destroyed? Default = .false.
+         logical(lk), optional, intent(in) :: overwrite_a
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_d_cholesky_solve_one
+     pure module subroutine stdlib_linalg_c_cholesky_solve_one(a,b,x,lower,overwrite_a,err)     
+         !> Input SPD matrix a[n,n]
+         complex(sp), intent(inout), target :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(sp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(sp), intent(inout), contiguous, target :: x(:)
+         !> [optional] Use lower triangular factorization? Default = .true.
+         logical(lk), optional, intent(in) :: lower
+         !> [optional] Can A data be overwritten and destroyed? Default = .false.
+         logical(lk), optional, intent(in) :: overwrite_a
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_c_cholesky_solve_one
+     pure module subroutine stdlib_linalg_z_cholesky_solve_one(a,b,x,lower,overwrite_a,err)     
+         !> Input SPD matrix a[n,n]
+         complex(dp), intent(inout), target :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(dp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(dp), intent(inout), contiguous, target :: x(:)
+         !> [optional] Use lower triangular factorization? Default = .true.
+         logical(lk), optional, intent(in) :: lower
+         !> [optional] Can A data be overwritten and destroyed? Default = .false.
+         logical(lk), optional, intent(in) :: overwrite_a
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_z_cholesky_solve_one
+     pure module subroutine stdlib_linalg_s_cholesky_solve_many(a,b,x,lower,overwrite_a,err)     
+         !> Input SPD matrix a[n,n]
+         real(sp), intent(inout), target :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(sp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(sp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] Use lower triangular factorization? Default = .true.
+         logical(lk), optional, intent(in) :: lower
+         !> [optional] Can A data be overwritten and destroyed? Default = .false.
+         logical(lk), optional, intent(in) :: overwrite_a
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_s_cholesky_solve_many
+     pure module subroutine stdlib_linalg_d_cholesky_solve_many(a,b,x,lower,overwrite_a,err)     
+         !> Input SPD matrix a[n,n]
+         real(dp), intent(inout), target :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(dp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(dp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] Use lower triangular factorization? Default = .true.
+         logical(lk), optional, intent(in) :: lower
+         !> [optional] Can A data be overwritten and destroyed? Default = .false.
+         logical(lk), optional, intent(in) :: overwrite_a
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_d_cholesky_solve_many
+     pure module subroutine stdlib_linalg_c_cholesky_solve_many(a,b,x,lower,overwrite_a,err)     
+         !> Input SPD matrix a[n,n]
+         complex(sp), intent(inout), target :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(sp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(sp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] Use lower triangular factorization? Default = .true.
+         logical(lk), optional, intent(in) :: lower
+         !> [optional] Can A data be overwritten and destroyed? Default = .false.
+         logical(lk), optional, intent(in) :: overwrite_a
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_c_cholesky_solve_many
+     pure module subroutine stdlib_linalg_z_cholesky_solve_many(a,b,x,lower,overwrite_a,err)     
+         !> Input SPD matrix a[n,n]
+         complex(dp), intent(inout), target :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(dp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(dp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] Use lower triangular factorization? Default = .true.
+         logical(lk), optional, intent(in) :: lower
+         !> [optional] Can A data be overwritten and destroyed? Default = .false.
+         logical(lk), optional, intent(in) :: overwrite_a
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_z_cholesky_solve_many
+  end interface cholesky_solve
      
   ! Least squares solution to system Ax=b, i.e. such that the 2-norm abs(b-Ax) is minimized.
   interface lstsq
@@ -1678,100 +1935,6 @@ module stdlib_linalg
         type(linalg_state_type), optional, intent(out) :: err
     end subroutine stdlib_linalg_z_constrained_lstsq_space
   end interface
-
-  ! Weighted least-squares: minimize ||D(Ax - b)||^2 where D = diag(sqrt(w))
-  interface weighted_lstsq
-    !! version: experimental
-    !!
-    !! Computes the weighted least-squares solution to \( \min_x \|D(Ax - b)\|_2^2 \)
-    !! ([Specification](../page/specs/stdlib_linalg.html#weighted-lstsq))
-    !!
-    !!### Summary
-    !! Function interface for computing weighted least-squares via row scaling.
-    !!
-    !!### Description
-    !!
-    !! This interface provides methods for computing weighted least-squares by
-    !! transforming to ordinary least-squares through row scaling.
-    !! Supported data types include `real` and `complex`.
-    !!
-    !!@note The solution is based on LAPACK's `*GELSD` after applying diagonal weights.
-    !!@warning Avoid extreme weight ratios (e.g., max(w)/min(w) > 1e6) as this may 
-    !!         cause loss of precision in the SVD-based solver.
-    !!
-    module function stdlib_linalg_s_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(sp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
-        real(sp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
-        real(sp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(sp), optional, intent(in) :: cond
-        !> [optional] Can A data be overwritten and destroyed?
-        logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
-        !> [optional] state return flag. On error if not requested, the code will stop
-        type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
-        real(sp), allocatable :: x(:)
-    end function stdlib_linalg_s_weighted_lstsq
-    module function stdlib_linalg_d_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(dp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
-        real(dp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
-        real(dp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(dp), optional, intent(in) :: cond
-        !> [optional] Can A data be overwritten and destroyed?
-        logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
-        !> [optional] state return flag. On error if not requested, the code will stop
-        type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
-        real(dp), allocatable :: x(:)
-    end function stdlib_linalg_d_weighted_lstsq
-    module function stdlib_linalg_c_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(sp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
-        complex(sp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
-        complex(sp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(sp), optional, intent(in) :: cond
-        !> [optional] Can A data be overwritten and destroyed?
-        logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
-        !> [optional] state return flag. On error if not requested, the code will stop
-        type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
-        complex(sp), allocatable :: x(:)
-    end function stdlib_linalg_c_weighted_lstsq
-    module function stdlib_linalg_z_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(dp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
-        complex(dp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
-        complex(dp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(dp), optional, intent(in) :: cond
-        !> [optional] Can A data be overwritten and destroyed?
-        logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
-        !> [optional] state return flag. On error if not requested, the code will stop
-        type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
-        complex(dp), allocatable :: x(:)
-    end function stdlib_linalg_z_weighted_lstsq
-  end interface weighted_lstsq
 
   ! QR factorization of rank-2 array A
   interface qr

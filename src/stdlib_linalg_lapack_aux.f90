@@ -1612,7 +1612,7 @@ module stdlib_linalg_lapack_aux
       ! Process output
       select case (info)
       case (0)
-         ! Success
+         err%state = LINALG_SUCCESS
       case (-1)
          err = linalg_state_type(this,LINALG_INTERNAL_ERROR,'invalid triangle selection: ', &
                   triangle,'. should be U/L')
@@ -1640,7 +1640,7 @@ module stdlib_linalg_lapack_aux
       ! Process output
       select case (info)
       case (0)
-         ! Success
+         err%state = LINALG_SUCCESS
       case (-1)
          err = linalg_state_type(this,LINALG_INTERNAL_ERROR,'invalid triangle selection: ', &
                   triangle,'. should be U/L')

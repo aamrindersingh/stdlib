@@ -36,7 +36,8 @@ module stdlib_linalg
   public :: solve
   public :: solve_lu
   public :: solve_chol
-  public :: cholesky_solve
+  public :: solve_lower_chol
+  public :: solve_upper_chol
   public :: solve_lstsq
   public :: solve_constrained_lstsq
   public :: trace
@@ -1045,133 +1046,13 @@ module stdlib_linalg
      end subroutine stdlib_linalg_z_solve_lu_many
   end interface solve_lu     
 
-  ! Solve linear system Ax = b using pre-computed Cholesky decomposition (subroutine interface)
+  ! One-shot Cholesky factorization and solve (uses POSV)
   interface solve_chol
      !! version: experimental 
      !!
      !! Solves the linear system \( A \cdot x = b \) for the unknown vector \( x \) from a 
-     !! symmetric positive definite matrix \( A \) that has been pre-factorized using Cholesky.
-     !! ([Specification](../page/specs/stdlib_linalg.html#solve_chol-solve-a-linear-system-using-cholesky-factors))
-     !!
-     !!### Summary 
-     !! Subroutine interface for solving a linear system using pre-computed Cholesky factors.
-     !!
-     !!### Description
-     !! 
-     !! This interface provides methods for computing the solution of a linear matrix system using
-     !! Cholesky factors. Supported data types include `real` and `complex`. Preallocated space 
-     !! for the solution vector `x` is user-provided. The `lower` argument is REQUIRED and must 
-     !! match the `lower` used during the Cholesky factorization.
-     !! The function can solve simultaneously either one (from a 1-d right-hand-side vector `b(:)`) 
-     !! or several (from a 2-d right-hand-side vector `b(:,:)`) systems.
-     !! 
-     !!@note The solution is based on LAPACK's `*POTRS` routines.
-     !!        
-     pure module subroutine stdlib_linalg_s_solve_chol_one(a,b,x,lower,err)     
-         !> Input matrix a[n,n] containing Cholesky factors from cholesky
-         real(sp), intent(in) :: a(:,:)
-         !> Right hand side vector or array, b[n] or b[n,nrhs]
-         real(sp), intent(in) :: b(:)
-         !> Result array/matrix x[n] or x[n,nrhs]     
-         real(sp), intent(inout), contiguous, target :: x(:)
-         !> Is the lower triangular factor stored? (REQUIRED)
-         logical(lk), intent(in) :: lower
-         !> [optional] state return flag. On error if not requested, the code will stop
-         type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_s_solve_chol_one
-     pure module subroutine stdlib_linalg_d_solve_chol_one(a,b,x,lower,err)     
-         !> Input matrix a[n,n] containing Cholesky factors from cholesky
-         real(dp), intent(in) :: a(:,:)
-         !> Right hand side vector or array, b[n] or b[n,nrhs]
-         real(dp), intent(in) :: b(:)
-         !> Result array/matrix x[n] or x[n,nrhs]     
-         real(dp), intent(inout), contiguous, target :: x(:)
-         !> Is the lower triangular factor stored? (REQUIRED)
-         logical(lk), intent(in) :: lower
-         !> [optional] state return flag. On error if not requested, the code will stop
-         type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_d_solve_chol_one
-     pure module subroutine stdlib_linalg_c_solve_chol_one(a,b,x,lower,err)     
-         !> Input matrix a[n,n] containing Cholesky factors from cholesky
-         complex(sp), intent(in) :: a(:,:)
-         !> Right hand side vector or array, b[n] or b[n,nrhs]
-         complex(sp), intent(in) :: b(:)
-         !> Result array/matrix x[n] or x[n,nrhs]     
-         complex(sp), intent(inout), contiguous, target :: x(:)
-         !> Is the lower triangular factor stored? (REQUIRED)
-         logical(lk), intent(in) :: lower
-         !> [optional] state return flag. On error if not requested, the code will stop
-         type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_c_solve_chol_one
-     pure module subroutine stdlib_linalg_z_solve_chol_one(a,b,x,lower,err)     
-         !> Input matrix a[n,n] containing Cholesky factors from cholesky
-         complex(dp), intent(in) :: a(:,:)
-         !> Right hand side vector or array, b[n] or b[n,nrhs]
-         complex(dp), intent(in) :: b(:)
-         !> Result array/matrix x[n] or x[n,nrhs]     
-         complex(dp), intent(inout), contiguous, target :: x(:)
-         !> Is the lower triangular factor stored? (REQUIRED)
-         logical(lk), intent(in) :: lower
-         !> [optional] state return flag. On error if not requested, the code will stop
-         type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_z_solve_chol_one
-     pure module subroutine stdlib_linalg_s_solve_chol_many(a,b,x,lower,err)     
-         !> Input matrix a[n,n] containing Cholesky factors from cholesky
-         real(sp), intent(in) :: a(:,:)
-         !> Right hand side vector or array, b[n] or b[n,nrhs]
-         real(sp), intent(in) :: b(:,:)
-         !> Result array/matrix x[n] or x[n,nrhs]     
-         real(sp), intent(inout), contiguous, target :: x(:,:)
-         !> Is the lower triangular factor stored? (REQUIRED)
-         logical(lk), intent(in) :: lower
-         !> [optional] state return flag. On error if not requested, the code will stop
-         type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_s_solve_chol_many
-     pure module subroutine stdlib_linalg_d_solve_chol_many(a,b,x,lower,err)     
-         !> Input matrix a[n,n] containing Cholesky factors from cholesky
-         real(dp), intent(in) :: a(:,:)
-         !> Right hand side vector or array, b[n] or b[n,nrhs]
-         real(dp), intent(in) :: b(:,:)
-         !> Result array/matrix x[n] or x[n,nrhs]     
-         real(dp), intent(inout), contiguous, target :: x(:,:)
-         !> Is the lower triangular factor stored? (REQUIRED)
-         logical(lk), intent(in) :: lower
-         !> [optional] state return flag. On error if not requested, the code will stop
-         type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_d_solve_chol_many
-     pure module subroutine stdlib_linalg_c_solve_chol_many(a,b,x,lower,err)     
-         !> Input matrix a[n,n] containing Cholesky factors from cholesky
-         complex(sp), intent(in) :: a(:,:)
-         !> Right hand side vector or array, b[n] or b[n,nrhs]
-         complex(sp), intent(in) :: b(:,:)
-         !> Result array/matrix x[n] or x[n,nrhs]     
-         complex(sp), intent(inout), contiguous, target :: x(:,:)
-         !> Is the lower triangular factor stored? (REQUIRED)
-         logical(lk), intent(in) :: lower
-         !> [optional] state return flag. On error if not requested, the code will stop
-         type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_c_solve_chol_many
-     pure module subroutine stdlib_linalg_z_solve_chol_many(a,b,x,lower,err)     
-         !> Input matrix a[n,n] containing Cholesky factors from cholesky
-         complex(dp), intent(in) :: a(:,:)
-         !> Right hand side vector or array, b[n] or b[n,nrhs]
-         complex(dp), intent(in) :: b(:,:)
-         !> Result array/matrix x[n] or x[n,nrhs]     
-         complex(dp), intent(inout), contiguous, target :: x(:,:)
-         !> Is the lower triangular factor stored? (REQUIRED)
-         logical(lk), intent(in) :: lower
-         !> [optional] state return flag. On error if not requested, the code will stop
-         type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_z_solve_chol_many
-  end interface solve_chol
-
-  ! One-shot Cholesky factorization and solve (convenience wrapper using POSV)
-  interface cholesky_solve
-     !! version: experimental 
-     !!
-     !! Solves the linear system \( A \cdot x = b \) for the unknown vector \( x \) from a 
      !! symmetric positive definite matrix \( A \). Combines factorization and solve in one call.
-     !! ([Specification](../page/specs/stdlib_linalg.html#cholesky_solve-one-shot-cholesky-solve))
+     !! ([Specification](../page/specs/stdlib_linalg.html#solve_chol-solve-spd-system-with-cholesky-factorization))
      !!
      !!### Summary 
      !! One-shot factorization and solve for SPD systems (wraps LAPACK POSV).
@@ -1180,14 +1061,15 @@ module stdlib_linalg
      !! 
      !! This interface computes both the Cholesky factorization and solves the linear system
      !! in a single call. Use this for one-time solves. For repeated solves with the same 
-     !! matrix but different RHS, use `cholesky` + `solve_chol` for better performance.
+     !! matrix but different RHS, use `cholesky` + `solve_lower_chol`/`solve_upper_chol` for 
+     !! better performance.
      !! Supported data types include `real` and `complex`.
      !! By default, A is not overwritten. Set `overwrite_a=.true.` to allow in-place 
      !! factorization for better performance.
      !! 
      !!@note The solution is based on LAPACK's `*POSV` routines.
      !!        
-     pure module subroutine stdlib_linalg_s_cholesky_solve_one(a,b,x,lower,overwrite_a,err)     
+     pure module subroutine stdlib_linalg_s_solve_chol_one(a,b,x,lower,overwrite_a,err)     
          !> Input SPD matrix a[n,n]
          real(sp), intent(inout), target :: a(:,:)
          !> Right hand side vector or array, b[n] or b[n,nrhs]
@@ -1200,8 +1082,8 @@ module stdlib_linalg
          logical(lk), optional, intent(in) :: overwrite_a
          !> [optional] state return flag. On error if not requested, the code will stop
          type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_s_cholesky_solve_one
-     pure module subroutine stdlib_linalg_d_cholesky_solve_one(a,b,x,lower,overwrite_a,err)     
+     end subroutine stdlib_linalg_s_solve_chol_one
+     pure module subroutine stdlib_linalg_d_solve_chol_one(a,b,x,lower,overwrite_a,err)     
          !> Input SPD matrix a[n,n]
          real(dp), intent(inout), target :: a(:,:)
          !> Right hand side vector or array, b[n] or b[n,nrhs]
@@ -1214,8 +1096,8 @@ module stdlib_linalg
          logical(lk), optional, intent(in) :: overwrite_a
          !> [optional] state return flag. On error if not requested, the code will stop
          type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_d_cholesky_solve_one
-     pure module subroutine stdlib_linalg_c_cholesky_solve_one(a,b,x,lower,overwrite_a,err)     
+     end subroutine stdlib_linalg_d_solve_chol_one
+     pure module subroutine stdlib_linalg_c_solve_chol_one(a,b,x,lower,overwrite_a,err)     
          !> Input SPD matrix a[n,n]
          complex(sp), intent(inout), target :: a(:,:)
          !> Right hand side vector or array, b[n] or b[n,nrhs]
@@ -1228,8 +1110,8 @@ module stdlib_linalg
          logical(lk), optional, intent(in) :: overwrite_a
          !> [optional] state return flag. On error if not requested, the code will stop
          type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_c_cholesky_solve_one
-     pure module subroutine stdlib_linalg_z_cholesky_solve_one(a,b,x,lower,overwrite_a,err)     
+     end subroutine stdlib_linalg_c_solve_chol_one
+     pure module subroutine stdlib_linalg_z_solve_chol_one(a,b,x,lower,overwrite_a,err)     
          !> Input SPD matrix a[n,n]
          complex(dp), intent(inout), target :: a(:,:)
          !> Right hand side vector or array, b[n] or b[n,nrhs]
@@ -1242,8 +1124,8 @@ module stdlib_linalg
          logical(lk), optional, intent(in) :: overwrite_a
          !> [optional] state return flag. On error if not requested, the code will stop
          type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_z_cholesky_solve_one
-     pure module subroutine stdlib_linalg_s_cholesky_solve_many(a,b,x,lower,overwrite_a,err)     
+     end subroutine stdlib_linalg_z_solve_chol_one
+     pure module subroutine stdlib_linalg_s_solve_chol_many(a,b,x,lower,overwrite_a,err)     
          !> Input SPD matrix a[n,n]
          real(sp), intent(inout), target :: a(:,:)
          !> Right hand side vector or array, b[n] or b[n,nrhs]
@@ -1256,8 +1138,8 @@ module stdlib_linalg
          logical(lk), optional, intent(in) :: overwrite_a
          !> [optional] state return flag. On error if not requested, the code will stop
          type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_s_cholesky_solve_many
-     pure module subroutine stdlib_linalg_d_cholesky_solve_many(a,b,x,lower,overwrite_a,err)     
+     end subroutine stdlib_linalg_s_solve_chol_many
+     pure module subroutine stdlib_linalg_d_solve_chol_many(a,b,x,lower,overwrite_a,err)     
          !> Input SPD matrix a[n,n]
          real(dp), intent(inout), target :: a(:,:)
          !> Right hand side vector or array, b[n] or b[n,nrhs]
@@ -1270,8 +1152,8 @@ module stdlib_linalg
          logical(lk), optional, intent(in) :: overwrite_a
          !> [optional] state return flag. On error if not requested, the code will stop
          type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_d_cholesky_solve_many
-     pure module subroutine stdlib_linalg_c_cholesky_solve_many(a,b,x,lower,overwrite_a,err)     
+     end subroutine stdlib_linalg_d_solve_chol_many
+     pure module subroutine stdlib_linalg_c_solve_chol_many(a,b,x,lower,overwrite_a,err)     
          !> Input SPD matrix a[n,n]
          complex(sp), intent(inout), target :: a(:,:)
          !> Right hand side vector or array, b[n] or b[n,nrhs]
@@ -1284,8 +1166,8 @@ module stdlib_linalg
          logical(lk), optional, intent(in) :: overwrite_a
          !> [optional] state return flag. On error if not requested, the code will stop
          type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_c_cholesky_solve_many
-     pure module subroutine stdlib_linalg_z_cholesky_solve_many(a,b,x,lower,overwrite_a,err)     
+     end subroutine stdlib_linalg_c_solve_chol_many
+     pure module subroutine stdlib_linalg_z_solve_chol_many(a,b,x,lower,overwrite_a,err)     
          !> Input SPD matrix a[n,n]
          complex(dp), intent(inout), target :: a(:,:)
          !> Right hand side vector or array, b[n] or b[n,nrhs]
@@ -1298,8 +1180,212 @@ module stdlib_linalg
          logical(lk), optional, intent(in) :: overwrite_a
          !> [optional] state return flag. On error if not requested, the code will stop
          type(linalg_state_type), optional, intent(out) :: err
-     end subroutine stdlib_linalg_z_cholesky_solve_many
-  end interface cholesky_solve
+     end subroutine stdlib_linalg_z_solve_chol_many
+  end interface solve_chol
+
+  ! Solve linear system using pre-computed LOWER Cholesky factor (subroutine interface)
+  interface solve_lower_chol
+     !! version: experimental 
+     !!
+     !! Solves the linear system \( A \cdot x = b \) for the unknown vector \( x \) from a 
+     !! symmetric positive definite matrix \( A \) using pre-computed LOWER Cholesky factor \( L \).
+     !! ([Specification](../page/specs/stdlib_linalg.html#solve_lower_chol-solve-using-lower-cholesky-factor))
+     !!
+     !!### Summary 
+     !! Subroutine interface for solving a linear system using pre-computed lower Cholesky factor.
+     !!
+     !!### Description
+     !! 
+     !! This interface solves a linear system using a pre-computed lower triangular Cholesky
+     !! factor \( L \) where \( A = L \cdot L^T \). The input matrix must come from a prior 
+     !! call to `cholesky` with `lower=.true.`.
+     !! Supported data types include `real` and `complex`.
+     !! 
+     !!@note The solution is based on LAPACK's `*POTRS` routines.
+     !!        
+     pure module subroutine stdlib_linalg_s_solve_lower_chol_one(a,b,x,err)     
+         !> Input matrix a[n,n] containing lower Cholesky factor L from cholesky(...,lower=.true.)
+         real(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(sp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(sp), intent(inout), contiguous, target :: x(:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_s_solve_lower_chol_one
+     pure module subroutine stdlib_linalg_d_solve_lower_chol_one(a,b,x,err)     
+         !> Input matrix a[n,n] containing lower Cholesky factor L from cholesky(...,lower=.true.)
+         real(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(dp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(dp), intent(inout), contiguous, target :: x(:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_d_solve_lower_chol_one
+     pure module subroutine stdlib_linalg_c_solve_lower_chol_one(a,b,x,err)     
+         !> Input matrix a[n,n] containing lower Cholesky factor L from cholesky(...,lower=.true.)
+         complex(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(sp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(sp), intent(inout), contiguous, target :: x(:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_c_solve_lower_chol_one
+     pure module subroutine stdlib_linalg_z_solve_lower_chol_one(a,b,x,err)     
+         !> Input matrix a[n,n] containing lower Cholesky factor L from cholesky(...,lower=.true.)
+         complex(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(dp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(dp), intent(inout), contiguous, target :: x(:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_z_solve_lower_chol_one
+     pure module subroutine stdlib_linalg_s_solve_lower_chol_many(a,b,x,err)     
+         !> Input matrix a[n,n] containing lower Cholesky factor L from cholesky(...,lower=.true.)
+         real(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(sp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(sp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_s_solve_lower_chol_many
+     pure module subroutine stdlib_linalg_d_solve_lower_chol_many(a,b,x,err)     
+         !> Input matrix a[n,n] containing lower Cholesky factor L from cholesky(...,lower=.true.)
+         real(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(dp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(dp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_d_solve_lower_chol_many
+     pure module subroutine stdlib_linalg_c_solve_lower_chol_many(a,b,x,err)     
+         !> Input matrix a[n,n] containing lower Cholesky factor L from cholesky(...,lower=.true.)
+         complex(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(sp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(sp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_c_solve_lower_chol_many
+     pure module subroutine stdlib_linalg_z_solve_lower_chol_many(a,b,x,err)     
+         !> Input matrix a[n,n] containing lower Cholesky factor L from cholesky(...,lower=.true.)
+         complex(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(dp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(dp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_z_solve_lower_chol_many
+  end interface solve_lower_chol
+
+  ! Solve linear system using pre-computed UPPER Cholesky factor (subroutine interface)
+  interface solve_upper_chol
+     !! version: experimental 
+     !!
+     !! Solves the linear system \( A \cdot x = b \) for the unknown vector \( x \) from a 
+     !! symmetric positive definite matrix \( A \) using pre-computed UPPER Cholesky factor \( U \).
+     !! ([Specification](../page/specs/stdlib_linalg.html#solve_upper_chol-solve-using-upper-cholesky-factor))
+     !!
+     !!### Summary 
+     !! Subroutine interface for solving a linear system using pre-computed upper Cholesky factor.
+     !!
+     !!### Description
+     !! 
+     !! This interface solves a linear system using a pre-computed upper triangular Cholesky
+     !! factor \( U \) where \( A = U^T \cdot U \). The input matrix must come from a prior 
+     !! call to `cholesky` with `lower=.false.`.
+     !! Supported data types include `real` and `complex`.
+     !! 
+     !!@note The solution is based on LAPACK's `*POTRS` routines.
+     !!        
+     pure module subroutine stdlib_linalg_s_solve_upper_chol_one(a,b,x,err)     
+         !> Input matrix a[n,n] containing upper Cholesky factor U from cholesky(...,lower=.false.)
+         real(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(sp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(sp), intent(inout), contiguous, target :: x(:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_s_solve_upper_chol_one
+     pure module subroutine stdlib_linalg_d_solve_upper_chol_one(a,b,x,err)     
+         !> Input matrix a[n,n] containing upper Cholesky factor U from cholesky(...,lower=.false.)
+         real(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(dp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(dp), intent(inout), contiguous, target :: x(:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_d_solve_upper_chol_one
+     pure module subroutine stdlib_linalg_c_solve_upper_chol_one(a,b,x,err)     
+         !> Input matrix a[n,n] containing upper Cholesky factor U from cholesky(...,lower=.false.)
+         complex(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(sp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(sp), intent(inout), contiguous, target :: x(:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_c_solve_upper_chol_one
+     pure module subroutine stdlib_linalg_z_solve_upper_chol_one(a,b,x,err)     
+         !> Input matrix a[n,n] containing upper Cholesky factor U from cholesky(...,lower=.false.)
+         complex(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(dp), intent(in) :: b(:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(dp), intent(inout), contiguous, target :: x(:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_z_solve_upper_chol_one
+     pure module subroutine stdlib_linalg_s_solve_upper_chol_many(a,b,x,err)     
+         !> Input matrix a[n,n] containing upper Cholesky factor U from cholesky(...,lower=.false.)
+         real(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(sp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(sp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_s_solve_upper_chol_many
+     pure module subroutine stdlib_linalg_d_solve_upper_chol_many(a,b,x,err)     
+         !> Input matrix a[n,n] containing upper Cholesky factor U from cholesky(...,lower=.false.)
+         real(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         real(dp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         real(dp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_d_solve_upper_chol_many
+     pure module subroutine stdlib_linalg_c_solve_upper_chol_many(a,b,x,err)     
+         !> Input matrix a[n,n] containing upper Cholesky factor U from cholesky(...,lower=.false.)
+         complex(sp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(sp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(sp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_c_solve_upper_chol_many
+     pure module subroutine stdlib_linalg_z_solve_upper_chol_many(a,b,x,err)     
+         !> Input matrix a[n,n] containing upper Cholesky factor U from cholesky(...,lower=.false.)
+         complex(dp), intent(in) :: a(:,:)
+         !> Right hand side vector or array, b[n] or b[n,nrhs]
+         complex(dp), intent(in) :: b(:,:)
+         !> Result array/matrix x[n] or x[n,nrhs]     
+         complex(dp), intent(inout), contiguous, target :: x(:,:)
+         !> [optional] state return flag. On error if not requested, the code will stop
+         type(linalg_state_type), optional, intent(out) :: err
+     end subroutine stdlib_linalg_z_solve_upper_chol_many
+  end interface solve_upper_chol
      
   ! Least squares solution to system Ax=b, i.e. such that the 2-norm abs(b-Ax) is minimized.
   interface lstsq

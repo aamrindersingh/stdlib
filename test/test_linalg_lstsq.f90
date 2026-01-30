@@ -2,7 +2,7 @@
 module test_linalg_least_squares
     use testdrive, only: error_type, check, new_unittest, unittest_type
     use stdlib_linalg_constants
-    use stdlib_linalg, only: lstsq,solve_lstsq
+    use stdlib_linalg, only: lstsq, solve_lstsq, generalized_lstsq, eigh, diag
     use stdlib_linalg_state, only: linalg_state_type
 
     implicit none (type,external)
@@ -23,8 +23,16 @@ module test_linalg_least_squares
 
         call add_test(tests,new_unittest("least_squares_s",test_lstsq_one_s))
         call add_test(tests,new_unittest("least_squares_randm_s",test_lstsq_random_s))
+        call add_test(tests,new_unittest("generalized_lstsq_s",test_generalized_lstsq_s))
+        call add_test(tests,new_unittest("generalized_lstsq_identity_s",test_generalized_lstsq_identity_s))
+        call add_test(tests,new_unittest("generalized_lstsq_svd_sqrt_s",test_generalized_lstsq_svd_sqrt_s))
+        call add_test(tests,new_unittest("generalized_lstsq_overwrite_s",test_generalized_lstsq_overwrite_s))
         call add_test(tests,new_unittest("least_squares_d",test_lstsq_one_d))
         call add_test(tests,new_unittest("least_squares_randm_d",test_lstsq_random_d))
+        call add_test(tests,new_unittest("generalized_lstsq_d",test_generalized_lstsq_d))
+        call add_test(tests,new_unittest("generalized_lstsq_identity_d",test_generalized_lstsq_identity_d))
+        call add_test(tests,new_unittest("generalized_lstsq_svd_sqrt_d",test_generalized_lstsq_svd_sqrt_d))
+        call add_test(tests,new_unittest("generalized_lstsq_overwrite_d",test_generalized_lstsq_overwrite_d))
 
     end subroutine test_least_squares
     
@@ -200,6 +208,333 @@ module test_linalg_least_squares
         if (allocated(error)) return
 
     end subroutine test_issue_823
+
+    !> Test basic generalized least-squares with correlated errors
+    subroutine test_generalized_lstsq_s(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        type(linalg_state_type) :: state
+        integer(ilp), parameter :: m = 3, n = 2
+        real(sp) :: A(m,n), b(m), W(m,m)
+        real(sp), allocatable :: x(:)
+
+        ! Design matrix
+        A(:,1) = 1.0_sp
+        A(:,2) = [1.0_sp, 2.0_sp, 3.0_sp]
+
+        ! Observations
+        b = [1.0_sp, 2.1_sp, 2.9_sp]
+
+        ! SPD covariance matrix (correlated errors)
+        W(1,:) = [2.0_sp, 1.0_sp, 0.5_sp]
+        W(2,:) = [1.0_sp, 2.0_sp, 1.0_sp]
+        W(3,:) = [0.5_sp, 1.0_sp, 2.0_sp]
+
+        x = generalized_lstsq(W, A, b, err=state)
+
+        call check(error, state%ok(), 'generalized_lstsq failed: '//state%print())
+        if (allocated(error)) return
+
+        call check(error, size(x)==n, 'generalized_lstsq: wrong solution size')
+        if (allocated(error)) return
+
+        ! Solution should be finite
+        call check(error, all(abs(x) < huge(0.0_sp)), 'generalized_lstsq: solution not finite')
+        if (allocated(error)) return
+
+    end subroutine test_generalized_lstsq_s
+
+    !> Test GLS with identity covariance = OLS
+    subroutine test_generalized_lstsq_identity_s(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        type(linalg_state_type) :: state
+        integer(ilp), parameter :: m = 4, n = 2
+        integer(ilp) :: i
+        real(sp), parameter :: tol = 1000*sqrt(epsilon(0.0_sp))
+        real(sp) :: A(m,n), b(m), W(m,m)
+        real(sp), allocatable :: x_gls(:), x_ols(:)
+
+        ! Design matrix
+        A(:,1) = 1.0_sp
+        A(:,2) = [1.0_sp, 2.0_sp, 3.0_sp, 4.0_sp]
+        b = [2.0_sp, 4.0_sp, 5.0_sp, 4.0_sp]
+
+        ! Identity covariance
+        W = 0.0_sp
+        do i = 1, m
+            W(i,i) = 1.0_sp
+        end do
+
+        x_gls = generalized_lstsq(W, A, b, err=state)
+        call check(error, state%ok(), 'generalized_lstsq with I failed')
+        if (allocated(error)) return
+
+        x_ols = lstsq(A, b, err=state)
+        call check(error, state%ok(), 'lstsq failed')
+        if (allocated(error)) return
+
+        ! GLS with identity should equal OLS
+        call check(error, all(abs(x_gls - x_ols) < tol), &
+                   'generalized_lstsq with identity should equal lstsq')
+        if (allocated(error)) return
+
+    end subroutine test_generalized_lstsq_identity_s
+
+    !> Test GLS with eigendecomposition-based matrix square root (not Cholesky)
+    !> This verifies that prefactored_w works with any valid matrix square root
+    subroutine test_generalized_lstsq_svd_sqrt_s(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        type(linalg_state_type) :: state
+        integer(ilp), parameter :: m = 3, n = 2
+        integer(ilp) :: i
+        real(sp), parameter :: tol = 1000*sqrt(epsilon(0.0_sp))
+        real(sp) :: A(m,n), b(m), W(m,m), sqrt_W(m,m), U(m,m)
+        real(sp) :: lambda(m)
+        real(sp), allocatable :: x_chol(:), x_sqrt(:)
+
+        ! Design matrix
+        A(:,1) = 1.0_sp
+        A(:,2) = [1.0_sp, 2.0_sp, 3.0_sp]
+
+        ! Observations
+        b = [1.0_sp, 2.1_sp, 2.9_sp]
+
+        ! SPD covariance matrix
+        W(1,:) = [2.0_sp, 1.0_sp, 0.5_sp]
+        W(2,:) = [1.0_sp, 2.0_sp, 1.0_sp]
+        W(3,:) = [0.5_sp, 1.0_sp, 2.0_sp]
+
+        ! Solve using Cholesky (internal factorization)
+        x_chol = generalized_lstsq(W, A, b, err=state)
+        call check(error, state%ok(), 'generalized_lstsq (Cholesky) failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Compute eigendecomposition: W = U * diag(lambda) * U^T
+        call eigh(W, lambda, vectors=U, err=state)
+        call check(error, state%ok(), 'eigh failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Compute matrix square root: sqrt(W) = U * diag(sqrt(lambda)) * U^T
+        ! This is a DENSE matrix (not triangular like Cholesky factor)
+        sqrt_W = matmul(U, matmul(diag(sqrt(lambda)), transpose(U)))
+
+        ! Solve using eigendecomposition-based square root (prefactored)
+        x_sqrt = generalized_lstsq(sqrt_W, A, b, prefactored_w=.true., err=state)
+        call check(error, state%ok(), 'generalized_lstsq (sqrt) failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Both methods should give the same solution
+        call check(error, all(abs(x_chol - x_sqrt) < tol), &
+                   'generalized_lstsq: Cholesky and eigendecomposition-based sqrt should match')
+        if (allocated(error)) return
+
+    end subroutine test_generalized_lstsq_svd_sqrt_s
+
+    !> Test GLS with overwrite_w=.true. (avoid internal allocation)
+    subroutine test_generalized_lstsq_overwrite_s(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        type(linalg_state_type) :: state
+        integer(ilp), parameter :: m = 3, n = 2
+        real(sp), parameter :: tol = 1000*sqrt(epsilon(0.0_sp))
+        real(sp) :: A(m,n), b(m), W(m,m), W_copy(m,m)
+        real(sp), allocatable :: x_copy(:), x_overwrite(:)
+
+        ! Design matrix
+        A(:,1) = 1.0_sp
+        A(:,2) = [1.0_sp, 2.0_sp, 3.0_sp]
+
+        ! Observations
+        b = [1.0_sp, 2.1_sp, 2.9_sp]
+
+        ! SPD covariance matrix
+        W(1,:) = [2.0_sp, 1.0_sp, 0.5_sp]
+        W(2,:) = [1.0_sp, 2.0_sp, 1.0_sp]
+        W(3,:) = [0.5_sp, 1.0_sp, 2.0_sp]
+        W_copy = W
+
+        ! Solve with copy (default)
+        x_copy = generalized_lstsq(W_copy, A, b, err=state)
+        call check(error, state%ok(), 'generalized_lstsq (copy) failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Solve with overwrite (no internal allocation for W)
+        x_overwrite = generalized_lstsq(W, A, b, overwrite_w=.true., err=state)
+        call check(error, state%ok(), 'generalized_lstsq (overwrite) failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Both should give the same solution
+        call check(error, all(abs(x_copy - x_overwrite) < tol), &
+                   'generalized_lstsq: copy and overwrite solutions should match')
+        if (allocated(error)) return
+
+    end subroutine test_generalized_lstsq_overwrite_s
+
+    !> Test basic generalized least-squares with correlated errors
+    subroutine test_generalized_lstsq_d(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        type(linalg_state_type) :: state
+        integer(ilp), parameter :: m = 3, n = 2
+        real(dp) :: A(m,n), b(m), W(m,m)
+        real(dp), allocatable :: x(:)
+
+        ! Design matrix
+        A(:,1) = 1.0_dp
+        A(:,2) = [1.0_dp, 2.0_dp, 3.0_dp]
+
+        ! Observations
+        b = [1.0_dp, 2.1_dp, 2.9_dp]
+
+        ! SPD covariance matrix (correlated errors)
+        W(1,:) = [2.0_dp, 1.0_dp, 0.5_dp]
+        W(2,:) = [1.0_dp, 2.0_dp, 1.0_dp]
+        W(3,:) = [0.5_dp, 1.0_dp, 2.0_dp]
+
+        x = generalized_lstsq(W, A, b, err=state)
+
+        call check(error, state%ok(), 'generalized_lstsq failed: '//state%print())
+        if (allocated(error)) return
+
+        call check(error, size(x)==n, 'generalized_lstsq: wrong solution size')
+        if (allocated(error)) return
+
+        ! Solution should be finite
+        call check(error, all(abs(x) < huge(0.0_dp)), 'generalized_lstsq: solution not finite')
+        if (allocated(error)) return
+
+    end subroutine test_generalized_lstsq_d
+
+    !> Test GLS with identity covariance = OLS
+    subroutine test_generalized_lstsq_identity_d(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        type(linalg_state_type) :: state
+        integer(ilp), parameter :: m = 4, n = 2
+        integer(ilp) :: i
+        real(dp), parameter :: tol = 1000*sqrt(epsilon(0.0_dp))
+        real(dp) :: A(m,n), b(m), W(m,m)
+        real(dp), allocatable :: x_gls(:), x_ols(:)
+
+        ! Design matrix
+        A(:,1) = 1.0_dp
+        A(:,2) = [1.0_dp, 2.0_dp, 3.0_dp, 4.0_dp]
+        b = [2.0_dp, 4.0_dp, 5.0_dp, 4.0_dp]
+
+        ! Identity covariance
+        W = 0.0_dp
+        do i = 1, m
+            W(i,i) = 1.0_dp
+        end do
+
+        x_gls = generalized_lstsq(W, A, b, err=state)
+        call check(error, state%ok(), 'generalized_lstsq with I failed')
+        if (allocated(error)) return
+
+        x_ols = lstsq(A, b, err=state)
+        call check(error, state%ok(), 'lstsq failed')
+        if (allocated(error)) return
+
+        ! GLS with identity should equal OLS
+        call check(error, all(abs(x_gls - x_ols) < tol), &
+                   'generalized_lstsq with identity should equal lstsq')
+        if (allocated(error)) return
+
+    end subroutine test_generalized_lstsq_identity_d
+
+    !> Test GLS with eigendecomposition-based matrix square root (not Cholesky)
+    !> This verifies that prefactored_w works with any valid matrix square root
+    subroutine test_generalized_lstsq_svd_sqrt_d(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        type(linalg_state_type) :: state
+        integer(ilp), parameter :: m = 3, n = 2
+        integer(ilp) :: i
+        real(dp), parameter :: tol = 1000*sqrt(epsilon(0.0_dp))
+        real(dp) :: A(m,n), b(m), W(m,m), sqrt_W(m,m), U(m,m)
+        real(dp) :: lambda(m)
+        real(dp), allocatable :: x_chol(:), x_sqrt(:)
+
+        ! Design matrix
+        A(:,1) = 1.0_dp
+        A(:,2) = [1.0_dp, 2.0_dp, 3.0_dp]
+
+        ! Observations
+        b = [1.0_dp, 2.1_dp, 2.9_dp]
+
+        ! SPD covariance matrix
+        W(1,:) = [2.0_dp, 1.0_dp, 0.5_dp]
+        W(2,:) = [1.0_dp, 2.0_dp, 1.0_dp]
+        W(3,:) = [0.5_dp, 1.0_dp, 2.0_dp]
+
+        ! Solve using Cholesky (internal factorization)
+        x_chol = generalized_lstsq(W, A, b, err=state)
+        call check(error, state%ok(), 'generalized_lstsq (Cholesky) failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Compute eigendecomposition: W = U * diag(lambda) * U^T
+        call eigh(W, lambda, vectors=U, err=state)
+        call check(error, state%ok(), 'eigh failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Compute matrix square root: sqrt(W) = U * diag(sqrt(lambda)) * U^T
+        ! This is a DENSE matrix (not triangular like Cholesky factor)
+        sqrt_W = matmul(U, matmul(diag(sqrt(lambda)), transpose(U)))
+
+        ! Solve using eigendecomposition-based square root (prefactored)
+        x_sqrt = generalized_lstsq(sqrt_W, A, b, prefactored_w=.true., err=state)
+        call check(error, state%ok(), 'generalized_lstsq (sqrt) failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Both methods should give the same solution
+        call check(error, all(abs(x_chol - x_sqrt) < tol), &
+                   'generalized_lstsq: Cholesky and eigendecomposition-based sqrt should match')
+        if (allocated(error)) return
+
+    end subroutine test_generalized_lstsq_svd_sqrt_d
+
+    !> Test GLS with overwrite_w=.true. (avoid internal allocation)
+    subroutine test_generalized_lstsq_overwrite_d(error)
+        type(error_type), allocatable, intent(out) :: error
+
+        type(linalg_state_type) :: state
+        integer(ilp), parameter :: m = 3, n = 2
+        real(dp), parameter :: tol = 1000*sqrt(epsilon(0.0_dp))
+        real(dp) :: A(m,n), b(m), W(m,m), W_copy(m,m)
+        real(dp), allocatable :: x_copy(:), x_overwrite(:)
+
+        ! Design matrix
+        A(:,1) = 1.0_dp
+        A(:,2) = [1.0_dp, 2.0_dp, 3.0_dp]
+
+        ! Observations
+        b = [1.0_dp, 2.1_dp, 2.9_dp]
+
+        ! SPD covariance matrix
+        W(1,:) = [2.0_dp, 1.0_dp, 0.5_dp]
+        W(2,:) = [1.0_dp, 2.0_dp, 1.0_dp]
+        W(3,:) = [0.5_dp, 1.0_dp, 2.0_dp]
+        W_copy = W
+
+        ! Solve with copy (default)
+        x_copy = generalized_lstsq(W_copy, A, b, err=state)
+        call check(error, state%ok(), 'generalized_lstsq (copy) failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Solve with overwrite (no internal allocation for W)
+        x_overwrite = generalized_lstsq(W, A, b, overwrite_w=.true., err=state)
+        call check(error, state%ok(), 'generalized_lstsq (overwrite) failed: '//state%print())
+        if (allocated(error)) return
+
+        ! Both should give the same solution
+        call check(error, all(abs(x_copy - x_overwrite) < tol), &
+                   'generalized_lstsq: copy and overwrite solutions should match')
+        if (allocated(error)) return
+
+    end subroutine test_generalized_lstsq_overwrite_d
+
 
     ! gcc-15 bugfix utility
     subroutine add_test(tests,new_test)

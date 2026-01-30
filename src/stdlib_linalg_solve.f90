@@ -1547,6 +1547,420 @@ submodule (stdlib_linalg) stdlib_linalg_solve
     
 
     !---------------------------------------------------------------------------
+    !> Private driver: Solve using pre-computed Cholesky factor (POTRS)
+    !> Not exported - used internally by solve_lower_chol and solve_upper_chol
+    !---------------------------------------------------------------------------
+    
+    !> Low-level driver for solving A*x = b using pre-computed Cholesky factor
+    pure subroutine solve_chol_s_one_driver(a,b,x,uplo,err)
+        !> Cholesky factor (L or U)[n,n] from cholesky(...)
+        real(sp), intent(in) :: a(:,:)
+        !> Right hand side vector or array, b[n] or b[n,nrhs]
+        real(sp), intent(in) :: b(:)
+        !> Result array/matrix x[n] or x[n,nrhs]
+        real(sp), intent(inout), contiguous, target :: x(:)
+        !> Triangle selector: 'L' for lower, 'U' for upper
+        character, intent(in) :: uplo
+        !> [optional] State return flag. On error if not requested, the code will stop
+        type(linalg_state_type), optional, intent(out) :: err
+        
+        ! Local variables
+        type(linalg_state_type) :: err0
+        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
+        real(sp), pointer :: xmat(:,:)
+
+        ! Problem sizes
+        lda   = size(a,1,kind=ilp)
+        n     = size(a,2,kind=ilp)
+        ldb   = size(b,1,kind=ilp)
+        nrhs  = size(b,kind=ilp)/ldb
+        ldx   = size(x,1,kind=ilp)
+        nrhsx = size(x,kind=ilp)/ldx
+        
+        ! Validate dimensions
+        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
+            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
+                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
+            call linalg_error_handling(err0,err)
+            return
+        end if
+        
+        ! Copy RHS to solution array (POTRS overwrites with solution)
+        x = b
+        
+        ! Create 2D pointer for LAPACK call
+        xmat(1:n,1:nrhs) => x
+        
+        ! Solve the system using LAPACK POTRS
+        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
+        
+        ! Handle errors using standard handler
+        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
+        
+        ! Process output and return
+        call linalg_error_handling(err0,err)
+
+    end subroutine solve_chol_s_one_driver
+    
+    !> Low-level driver for solving A*x = b using pre-computed Cholesky factor
+    pure subroutine solve_chol_d_one_driver(a,b,x,uplo,err)
+        !> Cholesky factor (L or U)[n,n] from cholesky(...)
+        real(dp), intent(in) :: a(:,:)
+        !> Right hand side vector or array, b[n] or b[n,nrhs]
+        real(dp), intent(in) :: b(:)
+        !> Result array/matrix x[n] or x[n,nrhs]
+        real(dp), intent(inout), contiguous, target :: x(:)
+        !> Triangle selector: 'L' for lower, 'U' for upper
+        character, intent(in) :: uplo
+        !> [optional] State return flag. On error if not requested, the code will stop
+        type(linalg_state_type), optional, intent(out) :: err
+        
+        ! Local variables
+        type(linalg_state_type) :: err0
+        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
+        real(dp), pointer :: xmat(:,:)
+
+        ! Problem sizes
+        lda   = size(a,1,kind=ilp)
+        n     = size(a,2,kind=ilp)
+        ldb   = size(b,1,kind=ilp)
+        nrhs  = size(b,kind=ilp)/ldb
+        ldx   = size(x,1,kind=ilp)
+        nrhsx = size(x,kind=ilp)/ldx
+        
+        ! Validate dimensions
+        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
+            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
+                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
+            call linalg_error_handling(err0,err)
+            return
+        end if
+        
+        ! Copy RHS to solution array (POTRS overwrites with solution)
+        x = b
+        
+        ! Create 2D pointer for LAPACK call
+        xmat(1:n,1:nrhs) => x
+        
+        ! Solve the system using LAPACK POTRS
+        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
+        
+        ! Handle errors using standard handler
+        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
+        
+        ! Process output and return
+        call linalg_error_handling(err0,err)
+
+    end subroutine solve_chol_d_one_driver
+    
+    !> Low-level driver for solving A*x = b using pre-computed Cholesky factor
+    pure subroutine solve_chol_c_one_driver(a,b,x,uplo,err)
+        !> Cholesky factor (L or U)[n,n] from cholesky(...)
+        complex(sp), intent(in) :: a(:,:)
+        !> Right hand side vector or array, b[n] or b[n,nrhs]
+        complex(sp), intent(in) :: b(:)
+        !> Result array/matrix x[n] or x[n,nrhs]
+        complex(sp), intent(inout), contiguous, target :: x(:)
+        !> Triangle selector: 'L' for lower, 'U' for upper
+        character, intent(in) :: uplo
+        !> [optional] State return flag. On error if not requested, the code will stop
+        type(linalg_state_type), optional, intent(out) :: err
+        
+        ! Local variables
+        type(linalg_state_type) :: err0
+        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
+        complex(sp), pointer :: xmat(:,:)
+
+        ! Problem sizes
+        lda   = size(a,1,kind=ilp)
+        n     = size(a,2,kind=ilp)
+        ldb   = size(b,1,kind=ilp)
+        nrhs  = size(b,kind=ilp)/ldb
+        ldx   = size(x,1,kind=ilp)
+        nrhsx = size(x,kind=ilp)/ldx
+        
+        ! Validate dimensions
+        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
+            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
+                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
+            call linalg_error_handling(err0,err)
+            return
+        end if
+        
+        ! Copy RHS to solution array (POTRS overwrites with solution)
+        x = b
+        
+        ! Create 2D pointer for LAPACK call
+        xmat(1:n,1:nrhs) => x
+        
+        ! Solve the system using LAPACK POTRS
+        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
+        
+        ! Handle errors using standard handler
+        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
+        
+        ! Process output and return
+        call linalg_error_handling(err0,err)
+
+    end subroutine solve_chol_c_one_driver
+    
+    !> Low-level driver for solving A*x = b using pre-computed Cholesky factor
+    pure subroutine solve_chol_z_one_driver(a,b,x,uplo,err)
+        !> Cholesky factor (L or U)[n,n] from cholesky(...)
+        complex(dp), intent(in) :: a(:,:)
+        !> Right hand side vector or array, b[n] or b[n,nrhs]
+        complex(dp), intent(in) :: b(:)
+        !> Result array/matrix x[n] or x[n,nrhs]
+        complex(dp), intent(inout), contiguous, target :: x(:)
+        !> Triangle selector: 'L' for lower, 'U' for upper
+        character, intent(in) :: uplo
+        !> [optional] State return flag. On error if not requested, the code will stop
+        type(linalg_state_type), optional, intent(out) :: err
+        
+        ! Local variables
+        type(linalg_state_type) :: err0
+        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
+        complex(dp), pointer :: xmat(:,:)
+
+        ! Problem sizes
+        lda   = size(a,1,kind=ilp)
+        n     = size(a,2,kind=ilp)
+        ldb   = size(b,1,kind=ilp)
+        nrhs  = size(b,kind=ilp)/ldb
+        ldx   = size(x,1,kind=ilp)
+        nrhsx = size(x,kind=ilp)/ldx
+        
+        ! Validate dimensions
+        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
+            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
+                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
+            call linalg_error_handling(err0,err)
+            return
+        end if
+        
+        ! Copy RHS to solution array (POTRS overwrites with solution)
+        x = b
+        
+        ! Create 2D pointer for LAPACK call
+        xmat(1:n,1:nrhs) => x
+        
+        ! Solve the system using LAPACK POTRS
+        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
+        
+        ! Handle errors using standard handler
+        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
+        
+        ! Process output and return
+        call linalg_error_handling(err0,err)
+
+    end subroutine solve_chol_z_one_driver
+    
+    !> Low-level driver for solving A*x = b using pre-computed Cholesky factor
+    pure subroutine solve_chol_s_many_driver(a,b,x,uplo,err)
+        !> Cholesky factor (L or U)[n,n] from cholesky(...)
+        real(sp), intent(in) :: a(:,:)
+        !> Right hand side vector or array, b[n] or b[n,nrhs]
+        real(sp), intent(in) :: b(:,:)
+        !> Result array/matrix x[n] or x[n,nrhs]
+        real(sp), intent(inout), contiguous, target :: x(:,:)
+        !> Triangle selector: 'L' for lower, 'U' for upper
+        character, intent(in) :: uplo
+        !> [optional] State return flag. On error if not requested, the code will stop
+        type(linalg_state_type), optional, intent(out) :: err
+        
+        ! Local variables
+        type(linalg_state_type) :: err0
+        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
+        real(sp), pointer :: xmat(:,:)
+
+        ! Problem sizes
+        lda   = size(a,1,kind=ilp)
+        n     = size(a,2,kind=ilp)
+        ldb   = size(b,1,kind=ilp)
+        nrhs  = size(b,kind=ilp)/ldb
+        ldx   = size(x,1,kind=ilp)
+        nrhsx = size(x,kind=ilp)/ldx
+        
+        ! Validate dimensions
+        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
+            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
+                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
+            call linalg_error_handling(err0,err)
+            return
+        end if
+        
+        ! Copy RHS to solution array (POTRS overwrites with solution)
+        x = b
+        
+        ! Create 2D pointer for LAPACK call
+        xmat(1:n,1:nrhs) => x
+        
+        ! Solve the system using LAPACK POTRS
+        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
+        
+        ! Handle errors using standard handler
+        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
+        
+        ! Process output and return
+        call linalg_error_handling(err0,err)
+
+    end subroutine solve_chol_s_many_driver
+    
+    !> Low-level driver for solving A*x = b using pre-computed Cholesky factor
+    pure subroutine solve_chol_d_many_driver(a,b,x,uplo,err)
+        !> Cholesky factor (L or U)[n,n] from cholesky(...)
+        real(dp), intent(in) :: a(:,:)
+        !> Right hand side vector or array, b[n] or b[n,nrhs]
+        real(dp), intent(in) :: b(:,:)
+        !> Result array/matrix x[n] or x[n,nrhs]
+        real(dp), intent(inout), contiguous, target :: x(:,:)
+        !> Triangle selector: 'L' for lower, 'U' for upper
+        character, intent(in) :: uplo
+        !> [optional] State return flag. On error if not requested, the code will stop
+        type(linalg_state_type), optional, intent(out) :: err
+        
+        ! Local variables
+        type(linalg_state_type) :: err0
+        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
+        real(dp), pointer :: xmat(:,:)
+
+        ! Problem sizes
+        lda   = size(a,1,kind=ilp)
+        n     = size(a,2,kind=ilp)
+        ldb   = size(b,1,kind=ilp)
+        nrhs  = size(b,kind=ilp)/ldb
+        ldx   = size(x,1,kind=ilp)
+        nrhsx = size(x,kind=ilp)/ldx
+        
+        ! Validate dimensions
+        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
+            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
+                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
+            call linalg_error_handling(err0,err)
+            return
+        end if
+        
+        ! Copy RHS to solution array (POTRS overwrites with solution)
+        x = b
+        
+        ! Create 2D pointer for LAPACK call
+        xmat(1:n,1:nrhs) => x
+        
+        ! Solve the system using LAPACK POTRS
+        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
+        
+        ! Handle errors using standard handler
+        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
+        
+        ! Process output and return
+        call linalg_error_handling(err0,err)
+
+    end subroutine solve_chol_d_many_driver
+    
+    !> Low-level driver for solving A*x = b using pre-computed Cholesky factor
+    pure subroutine solve_chol_c_many_driver(a,b,x,uplo,err)
+        !> Cholesky factor (L or U)[n,n] from cholesky(...)
+        complex(sp), intent(in) :: a(:,:)
+        !> Right hand side vector or array, b[n] or b[n,nrhs]
+        complex(sp), intent(in) :: b(:,:)
+        !> Result array/matrix x[n] or x[n,nrhs]
+        complex(sp), intent(inout), contiguous, target :: x(:,:)
+        !> Triangle selector: 'L' for lower, 'U' for upper
+        character, intent(in) :: uplo
+        !> [optional] State return flag. On error if not requested, the code will stop
+        type(linalg_state_type), optional, intent(out) :: err
+        
+        ! Local variables
+        type(linalg_state_type) :: err0
+        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
+        complex(sp), pointer :: xmat(:,:)
+
+        ! Problem sizes
+        lda   = size(a,1,kind=ilp)
+        n     = size(a,2,kind=ilp)
+        ldb   = size(b,1,kind=ilp)
+        nrhs  = size(b,kind=ilp)/ldb
+        ldx   = size(x,1,kind=ilp)
+        nrhsx = size(x,kind=ilp)/ldx
+        
+        ! Validate dimensions
+        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
+            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
+                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
+            call linalg_error_handling(err0,err)
+            return
+        end if
+        
+        ! Copy RHS to solution array (POTRS overwrites with solution)
+        x = b
+        
+        ! Create 2D pointer for LAPACK call
+        xmat(1:n,1:nrhs) => x
+        
+        ! Solve the system using LAPACK POTRS
+        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
+        
+        ! Handle errors using standard handler
+        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
+        
+        ! Process output and return
+        call linalg_error_handling(err0,err)
+
+    end subroutine solve_chol_c_many_driver
+    
+    !> Low-level driver for solving A*x = b using pre-computed Cholesky factor
+    pure subroutine solve_chol_z_many_driver(a,b,x,uplo,err)
+        !> Cholesky factor (L or U)[n,n] from cholesky(...)
+        complex(dp), intent(in) :: a(:,:)
+        !> Right hand side vector or array, b[n] or b[n,nrhs]
+        complex(dp), intent(in) :: b(:,:)
+        !> Result array/matrix x[n] or x[n,nrhs]
+        complex(dp), intent(inout), contiguous, target :: x(:,:)
+        !> Triangle selector: 'L' for lower, 'U' for upper
+        character, intent(in) :: uplo
+        !> [optional] State return flag. On error if not requested, the code will stop
+        type(linalg_state_type), optional, intent(out) :: err
+        
+        ! Local variables
+        type(linalg_state_type) :: err0
+        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
+        complex(dp), pointer :: xmat(:,:)
+
+        ! Problem sizes
+        lda   = size(a,1,kind=ilp)
+        n     = size(a,2,kind=ilp)
+        ldb   = size(b,1,kind=ilp)
+        nrhs  = size(b,kind=ilp)/ldb
+        ldx   = size(x,1,kind=ilp)
+        nrhsx = size(x,kind=ilp)/ldx
+        
+        ! Validate dimensions
+        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
+            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
+                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
+            call linalg_error_handling(err0,err)
+            return
+        end if
+        
+        ! Copy RHS to solution array (POTRS overwrites with solution)
+        x = b
+        
+        ! Create 2D pointer for LAPACK call
+        xmat(1:n,1:nrhs) => x
+        
+        ! Solve the system using LAPACK POTRS
+        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
+        
+        ! Handle errors using standard handler
+        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
+        
+        ! Process output and return
+        call linalg_error_handling(err0,err)
+
+    end subroutine solve_chol_z_many_driver
+    
+
+    !---------------------------------------------------------------------------
     !> solve_lower_chol: Solve using PRE-COMPUTED LOWER Cholesky factor (POTRS)
     !---------------------------------------------------------------------------
     
@@ -1561,42 +1975,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'L'
-        real(sp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with lower triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_s_one_driver(a,b,x,'L',err)
 
     end subroutine stdlib_linalg_s_solve_lower_chol_one
     
@@ -1611,42 +1990,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'L'
-        real(dp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with lower triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_d_one_driver(a,b,x,'L',err)
 
     end subroutine stdlib_linalg_d_solve_lower_chol_one
     
@@ -1661,42 +2005,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'L'
-        complex(sp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with lower triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_c_one_driver(a,b,x,'L',err)
 
     end subroutine stdlib_linalg_c_solve_lower_chol_one
     
@@ -1711,42 +2020,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'L'
-        complex(dp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with lower triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_z_one_driver(a,b,x,'L',err)
 
     end subroutine stdlib_linalg_z_solve_lower_chol_one
     
@@ -1761,42 +2035,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'L'
-        real(sp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with lower triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_s_many_driver(a,b,x,'L',err)
 
     end subroutine stdlib_linalg_s_solve_lower_chol_many
     
@@ -1811,42 +2050,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'L'
-        real(dp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with lower triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_d_many_driver(a,b,x,'L',err)
 
     end subroutine stdlib_linalg_d_solve_lower_chol_many
     
@@ -1861,42 +2065,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'L'
-        complex(sp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with lower triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_c_many_driver(a,b,x,'L',err)
 
     end subroutine stdlib_linalg_c_solve_lower_chol_many
     
@@ -1911,42 +2080,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'L'
-        complex(dp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with lower triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_z_many_driver(a,b,x,'L',err)
 
     end subroutine stdlib_linalg_z_solve_lower_chol_many
     
@@ -1966,42 +2100,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'U'
-        real(sp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with upper triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_s_one_driver(a,b,x,'U',err)
 
     end subroutine stdlib_linalg_s_solve_upper_chol_one
     
@@ -2016,42 +2115,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'U'
-        real(dp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with upper triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_d_one_driver(a,b,x,'U',err)
 
     end subroutine stdlib_linalg_d_solve_upper_chol_one
     
@@ -2066,42 +2130,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'U'
-        complex(sp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with upper triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_c_one_driver(a,b,x,'U',err)
 
     end subroutine stdlib_linalg_c_solve_upper_chol_one
     
@@ -2116,42 +2145,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'U'
-        complex(dp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with upper triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_z_one_driver(a,b,x,'U',err)
 
     end subroutine stdlib_linalg_z_solve_upper_chol_one
     
@@ -2166,42 +2160,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'U'
-        real(sp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with upper triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_s_many_driver(a,b,x,'U',err)
 
     end subroutine stdlib_linalg_s_solve_upper_chol_many
     
@@ -2216,42 +2175,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'U'
-        real(dp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with upper triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_d_many_driver(a,b,x,'U',err)
 
     end subroutine stdlib_linalg_d_solve_upper_chol_many
     
@@ -2266,42 +2190,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'U'
-        complex(sp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with upper triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_c_many_driver(a,b,x,'U',err)
 
     end subroutine stdlib_linalg_c_solve_upper_chol_many
     
@@ -2316,42 +2205,7 @@ submodule (stdlib_linalg) stdlib_linalg_solve
         !> [optional] State return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         
-        ! Local variables
-        type(linalg_state_type) :: err0
-        integer(ilp) :: lda,n,ldb,ldx,nrhs,nrhsx,info
-        character, parameter :: uplo = 'U'
-        complex(dp), pointer :: xmat(:,:)
-
-        ! Problem sizes
-        lda   = size(a,1,kind=ilp)
-        n     = size(a,2,kind=ilp)
-        ldb   = size(b,1,kind=ilp)
-        nrhs  = size(b,kind=ilp)/ldb
-        ldx   = size(x,1,kind=ilp)
-        nrhsx = size(x,kind=ilp)/ldx
-        
-        ! Validate dimensions
-        if (any([lda,n,ldb]<1) .or. any([lda,ldb,ldx]/=n) .or. nrhsx/=nrhs) then
-            err0 = linalg_state_type(this,LINALG_VALUE_ERROR,'invalid sizes: a=',[lda,n], &
-                                                             'b=',[ldb,nrhs],' x=',[ldx,nrhsx])
-            call linalg_error_handling(err0,err)
-            return
-        end if
-        
-        ! Copy RHS to solution array (POTRS overwrites with solution)
-        x = b
-        
-        ! Create 2D pointer for LAPACK call
-        xmat(1:n,1:nrhs) => x
-        
-        ! Solve the system using LAPACK POTRS with upper triangular factor
-        call potrs(uplo,n,nrhs,a,lda,xmat,n,info)
-        
-        ! Handle errors using standard handler
-        call handle_potrs_info(this,info,uplo,n,nrhs,lda,n,err0)
-        
-        ! Process output and return
-        call linalg_error_handling(err0,err)
+        call solve_chol_z_many_driver(a,b,x,'U',err)
 
     end subroutine stdlib_linalg_z_solve_upper_chol_many
     

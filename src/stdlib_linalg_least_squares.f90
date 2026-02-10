@@ -1,10 +1,10 @@
 submodule (stdlib_linalg) stdlib_linalg_least_squares
 !! Least-squares solution to Ax=b
      use stdlib_linalg_constants
-     use stdlib_linalg_lapack, only: gelsd, gglse, stdlib_ilaenv, lascl2
-     use stdlib_linalg_lapack_aux, only: handle_gelsd_info, handle_gglse_info
+     use stdlib_linalg_lapack, only: gelsd, gglse, ggglm, stdlib_ilaenv
+     use stdlib_linalg_lapack_aux, only: handle_gelsd_info, handle_gglse_info, handle_ggglm_info
      use stdlib_linalg_state, only: linalg_state_type, linalg_error_handling, LINALG_ERROR, &
-         LINALG_INTERNAL_ERROR, LINALG_VALUE_ERROR
+         LINALG_INTERNAL_ERROR, LINALG_VALUE_ERROR, LINALG_SUCCESS
      implicit none
      
      character(*), parameter :: this = 'lstsq'
@@ -2870,23 +2870,23 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     end function stdlib_linalg_z_constrained_lstsq
 
     !-------------------------------------------------------------
-    !-----     Weighted Least-Squares Solver                 -----
+    !-----     Generalized Least-Squares Solver              -----
     !-------------------------------------------------------------
 
-    ! Weighted least-squares: minimize ||D(Ax - b)||^2 where D = diag(sqrt(w))
-    module function stdlib_linalg_s_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(sp), intent(in) :: w(:)
+    ! Generalized least-squares: minimize (Ax-b)^T W^{-1} (Ax-b) where W is symmetric/Hermitian positive definite
+    module function stdlib_linalg_s_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        real(sp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         real(sp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         real(sp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(sp), optional, intent(in) :: cond
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
@@ -2894,34 +2894,32 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
 
         ! Local variables
         type(linalg_state_type) :: err0
-        integer(ilp) :: m, n
-        logical(lk) :: copy_a
-        real(sp), pointer :: amat(:,:)
-        real(sp), allocatable, target :: amat_alloc(:,:)
-        real(sp), allocatable :: b_scaled(:)
-        real(sp), allocatable :: sqrt_w(:)
-        character(*), parameter :: this = 'weighted_lstsq'
+        integer(ilp) :: m, n, p, lda, ldb, lwork, info
+        logical(lk) :: copy_a, copy_w, is_prefactored
+        real(sp), pointer :: amat(:,:), lmat(:,:)
+        real(sp), allocatable, target :: amat_alloc(:,:), lmat_alloc(:,:)
+        real(sp), allocatable :: d(:), y(:), work(:)
+        character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
         n = size(a, 2, kind=ilp)
+        p = m  ! For GLS, B is m×m
 
-        ! Allocate result (even on error, to prevent segfault on return)
+        ! Allocate result early (prevents segfault on error return)
         allocate(x(n))
 
         ! Validate matrix dimensions
         if (m < 1 .or. n < 1) then
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, 'Invalid matrix size a(m, n) =', [m, n])
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        ! Validate inputs
-        if (size(w, kind=ilp) /= m) then
+        ! Validate sizes
+        if (size(w, 1, kind=ilp) /= m .or. size(w, 2, kind=ilp) /= m) then
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
-                   'Weight vector size must match number of rows:', size(w, kind=ilp), '/=', m)
+                   'Covariance matrix must be square m×m:', shape(w, kind=ilp))
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
@@ -2929,24 +2927,22 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
                    'Right-hand side size must match rows of A:', size(b, kind=ilp), '/=', m)
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        if (any(w <= 0.0_sp)) then
-            err0 = linalg_state_type(this, LINALG_VALUE_ERROR, 'Weights must be positive')
+        if (m < n) then
+            err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
+                   'GGGLM requires m >= n (overdetermined or square):', m, '<', n)
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        ! Can A be overwritten? By default, do not overwrite
+        ! Process options
+        is_prefactored = optval(prefactored_w, .false._lk)
         copy_a = .not. optval(overwrite_a, .false._lk)
+        copy_w = .not. optval(overwrite_w, .false._lk)
 
-        ! Compute sqrt of weights
-        sqrt_w = sqrt(w)
-
-        ! Handle A matrix: either copy or use original
+        ! Handle A matrix
         if (copy_a) then
             allocate(amat_alloc(m, n), source=a)
             amat => amat_alloc
@@ -2954,37 +2950,71 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
             amat => a
         end if
 
-        ! Scale rows of A by sqrt(w) using LAPACK's lascl2
-        call lascl2(m, n, sqrt_w, amat, m)
+        ! Handle covariance/matrix square root
+        if (copy_w) then
+            allocate(lmat_alloc(m, m), source=w)
+            lmat => lmat_alloc
+        else
+            lmat => w
+        end if
 
-        ! Scale b
-        b_scaled = sqrt_w * b
+        if (.not. is_prefactored) then
+            ! Compute Cholesky factorization: W = L * L^T (real) or W = L * L^H (complex)
+            call cholesky(lmat, lower=.true._lk, other_zeroed=.true._lk, err=err0)
+            if (err0%error()) then
+                ! Cleanup before early return
+                if (copy_a) deallocate(amat_alloc)
+                if (copy_w) deallocate(lmat_alloc)
+                call linalg_error_handling(err0, err)
+                return
+            end if
+        end if
+        ! If prefactored_w=.true., user provides a valid matrix square root B where W = B*B^T.
+        ! This can be a Cholesky factor OR any other valid square root (e.g., SVD-based).
+        ! We do not modify the user's input.
 
-        ! Solve transformed OLS problem using local error state
-        call stdlib_linalg_s_solve_lstsq_one(amat, b_scaled, x, cond=cond, overwrite_a=.true., rank=rank, err=err0)
-        
-        ! Propagate error with updated location
-        call linalg_error_handling(err0, err, where_at=this)
+        ! Prepare for GGGLM
+        allocate(d(m), source=b)
+        allocate(y(p))
+
+        lda = m
+        ldb = m
+
+        ! Workspace query
+        allocate(work(1))
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, -1_ilp, info)
+        lwork = ceiling(real(work(1), kind=sp), kind=ilp)
+        deallocate(work)
+        allocate(work(lwork))
+
+        ! Solve GLS via GGGLM
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, lwork, info)
+
+        ! Handle errors
+        call handle_ggglm_info(this, info, m, n, p, lda, ldb, err0)
 
         ! Cleanup
         if (copy_a) deallocate(amat_alloc)
-        deallocate(b_scaled, sqrt_w)
+        if (copy_w) deallocate(lmat_alloc)
+        deallocate(d, y, work)
 
-    end function stdlib_linalg_s_weighted_lstsq
-    ! Weighted least-squares: minimize ||D(Ax - b)||^2 where D = diag(sqrt(w))
-    module function stdlib_linalg_d_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(dp), intent(in) :: w(:)
+        call linalg_error_handling(err0, err)
+
+    end function stdlib_linalg_s_generalized_lstsq
+    ! Generalized least-squares: minimize (Ax-b)^T W^{-1} (Ax-b) where W is symmetric/Hermitian positive definite
+    module function stdlib_linalg_d_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        real(dp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         real(dp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         real(dp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(dp), optional, intent(in) :: cond
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
@@ -2992,34 +3022,32 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
 
         ! Local variables
         type(linalg_state_type) :: err0
-        integer(ilp) :: m, n
-        logical(lk) :: copy_a
-        real(dp), pointer :: amat(:,:)
-        real(dp), allocatable, target :: amat_alloc(:,:)
-        real(dp), allocatable :: b_scaled(:)
-        real(dp), allocatable :: sqrt_w(:)
-        character(*), parameter :: this = 'weighted_lstsq'
+        integer(ilp) :: m, n, p, lda, ldb, lwork, info
+        logical(lk) :: copy_a, copy_w, is_prefactored
+        real(dp), pointer :: amat(:,:), lmat(:,:)
+        real(dp), allocatable, target :: amat_alloc(:,:), lmat_alloc(:,:)
+        real(dp), allocatable :: d(:), y(:), work(:)
+        character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
         n = size(a, 2, kind=ilp)
+        p = m  ! For GLS, B is m×m
 
-        ! Allocate result (even on error, to prevent segfault on return)
+        ! Allocate result early (prevents segfault on error return)
         allocate(x(n))
 
         ! Validate matrix dimensions
         if (m < 1 .or. n < 1) then
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, 'Invalid matrix size a(m, n) =', [m, n])
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        ! Validate inputs
-        if (size(w, kind=ilp) /= m) then
+        ! Validate sizes
+        if (size(w, 1, kind=ilp) /= m .or. size(w, 2, kind=ilp) /= m) then
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
-                   'Weight vector size must match number of rows:', size(w, kind=ilp), '/=', m)
+                   'Covariance matrix must be square m×m:', shape(w, kind=ilp))
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
@@ -3027,24 +3055,22 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
                    'Right-hand side size must match rows of A:', size(b, kind=ilp), '/=', m)
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        if (any(w <= 0.0_dp)) then
-            err0 = linalg_state_type(this, LINALG_VALUE_ERROR, 'Weights must be positive')
+        if (m < n) then
+            err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
+                   'GGGLM requires m >= n (overdetermined or square):', m, '<', n)
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        ! Can A be overwritten? By default, do not overwrite
+        ! Process options
+        is_prefactored = optval(prefactored_w, .false._lk)
         copy_a = .not. optval(overwrite_a, .false._lk)
+        copy_w = .not. optval(overwrite_w, .false._lk)
 
-        ! Compute sqrt of weights
-        sqrt_w = sqrt(w)
-
-        ! Handle A matrix: either copy or use original
+        ! Handle A matrix
         if (copy_a) then
             allocate(amat_alloc(m, n), source=a)
             amat => amat_alloc
@@ -3052,37 +3078,71 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
             amat => a
         end if
 
-        ! Scale rows of A by sqrt(w) using LAPACK's lascl2
-        call lascl2(m, n, sqrt_w, amat, m)
+        ! Handle covariance/matrix square root
+        if (copy_w) then
+            allocate(lmat_alloc(m, m), source=w)
+            lmat => lmat_alloc
+        else
+            lmat => w
+        end if
 
-        ! Scale b
-        b_scaled = sqrt_w * b
+        if (.not. is_prefactored) then
+            ! Compute Cholesky factorization: W = L * L^T (real) or W = L * L^H (complex)
+            call cholesky(lmat, lower=.true._lk, other_zeroed=.true._lk, err=err0)
+            if (err0%error()) then
+                ! Cleanup before early return
+                if (copy_a) deallocate(amat_alloc)
+                if (copy_w) deallocate(lmat_alloc)
+                call linalg_error_handling(err0, err)
+                return
+            end if
+        end if
+        ! If prefactored_w=.true., user provides a valid matrix square root B where W = B*B^T.
+        ! This can be a Cholesky factor OR any other valid square root (e.g., SVD-based).
+        ! We do not modify the user's input.
 
-        ! Solve transformed OLS problem using local error state
-        call stdlib_linalg_d_solve_lstsq_one(amat, b_scaled, x, cond=cond, overwrite_a=.true., rank=rank, err=err0)
-        
-        ! Propagate error with updated location
-        call linalg_error_handling(err0, err, where_at=this)
+        ! Prepare for GGGLM
+        allocate(d(m), source=b)
+        allocate(y(p))
+
+        lda = m
+        ldb = m
+
+        ! Workspace query
+        allocate(work(1))
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, -1_ilp, info)
+        lwork = ceiling(real(work(1), kind=dp), kind=ilp)
+        deallocate(work)
+        allocate(work(lwork))
+
+        ! Solve GLS via GGGLM
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, lwork, info)
+
+        ! Handle errors
+        call handle_ggglm_info(this, info, m, n, p, lda, ldb, err0)
 
         ! Cleanup
         if (copy_a) deallocate(amat_alloc)
-        deallocate(b_scaled, sqrt_w)
+        if (copy_w) deallocate(lmat_alloc)
+        deallocate(d, y, work)
 
-    end function stdlib_linalg_d_weighted_lstsq
-    ! Weighted least-squares: minimize ||D(Ax - b)||^2 where D = diag(sqrt(w))
-    module function stdlib_linalg_c_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(sp), intent(in) :: w(:)
+        call linalg_error_handling(err0, err)
+
+    end function stdlib_linalg_d_generalized_lstsq
+    ! Generalized least-squares: minimize (Ax-b)^T W^{-1} (Ax-b) where W is symmetric/Hermitian positive definite
+    module function stdlib_linalg_c_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        complex(sp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         complex(sp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         complex(sp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(sp), optional, intent(in) :: cond
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
@@ -3090,34 +3150,32 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
 
         ! Local variables
         type(linalg_state_type) :: err0
-        integer(ilp) :: m, n
-        logical(lk) :: copy_a
-        complex(sp), pointer :: amat(:,:)
-        complex(sp), allocatable, target :: amat_alloc(:,:)
-        complex(sp), allocatable :: b_scaled(:)
-        real(sp), allocatable :: sqrt_w(:)
-        character(*), parameter :: this = 'weighted_lstsq'
+        integer(ilp) :: m, n, p, lda, ldb, lwork, info
+        logical(lk) :: copy_a, copy_w, is_prefactored
+        complex(sp), pointer :: amat(:,:), lmat(:,:)
+        complex(sp), allocatable, target :: amat_alloc(:,:), lmat_alloc(:,:)
+        complex(sp), allocatable :: d(:), y(:), work(:)
+        character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
         n = size(a, 2, kind=ilp)
+        p = m  ! For GLS, B is m×m
 
-        ! Allocate result (even on error, to prevent segfault on return)
+        ! Allocate result early (prevents segfault on error return)
         allocate(x(n))
 
         ! Validate matrix dimensions
         if (m < 1 .or. n < 1) then
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, 'Invalid matrix size a(m, n) =', [m, n])
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        ! Validate inputs
-        if (size(w, kind=ilp) /= m) then
+        ! Validate sizes
+        if (size(w, 1, kind=ilp) /= m .or. size(w, 2, kind=ilp) /= m) then
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
-                   'Weight vector size must match number of rows:', size(w, kind=ilp), '/=', m)
+                   'Covariance matrix must be square m×m:', shape(w, kind=ilp))
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
@@ -3125,24 +3183,22 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
                    'Right-hand side size must match rows of A:', size(b, kind=ilp), '/=', m)
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        if (any(w <= 0.0_sp)) then
-            err0 = linalg_state_type(this, LINALG_VALUE_ERROR, 'Weights must be positive')
+        if (m < n) then
+            err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
+                   'GGGLM requires m >= n (overdetermined or square):', m, '<', n)
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        ! Can A be overwritten? By default, do not overwrite
+        ! Process options
+        is_prefactored = optval(prefactored_w, .false._lk)
         copy_a = .not. optval(overwrite_a, .false._lk)
+        copy_w = .not. optval(overwrite_w, .false._lk)
 
-        ! Compute sqrt of weights
-        sqrt_w = sqrt(w)
-
-        ! Handle A matrix: either copy or use original
+        ! Handle A matrix
         if (copy_a) then
             allocate(amat_alloc(m, n), source=a)
             amat => amat_alloc
@@ -3150,37 +3206,71 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
             amat => a
         end if
 
-        ! Scale rows of A by sqrt(w) using LAPACK's lascl2
-        call lascl2(m, n, sqrt_w, amat, m)
+        ! Handle covariance/matrix square root
+        if (copy_w) then
+            allocate(lmat_alloc(m, m), source=w)
+            lmat => lmat_alloc
+        else
+            lmat => w
+        end if
 
-        ! Scale b
-        b_scaled = sqrt_w * b
+        if (.not. is_prefactored) then
+            ! Compute Cholesky factorization: W = L * L^T (real) or W = L * L^H (complex)
+            call cholesky(lmat, lower=.true._lk, other_zeroed=.true._lk, err=err0)
+            if (err0%error()) then
+                ! Cleanup before early return
+                if (copy_a) deallocate(amat_alloc)
+                if (copy_w) deallocate(lmat_alloc)
+                call linalg_error_handling(err0, err)
+                return
+            end if
+        end if
+        ! If prefactored_w=.true., user provides a valid matrix square root B where W = B*B^T.
+        ! This can be a Cholesky factor OR any other valid square root (e.g., SVD-based).
+        ! We do not modify the user's input.
 
-        ! Solve transformed OLS problem using local error state
-        call stdlib_linalg_c_solve_lstsq_one(amat, b_scaled, x, cond=cond, overwrite_a=.true., rank=rank, err=err0)
-        
-        ! Propagate error with updated location
-        call linalg_error_handling(err0, err, where_at=this)
+        ! Prepare for GGGLM
+        allocate(d(m), source=b)
+        allocate(y(p))
+
+        lda = m
+        ldb = m
+
+        ! Workspace query
+        allocate(work(1))
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, -1_ilp, info)
+        lwork = ceiling(real(work(1), kind=sp), kind=ilp)
+        deallocate(work)
+        allocate(work(lwork))
+
+        ! Solve GLS via GGGLM
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, lwork, info)
+
+        ! Handle errors
+        call handle_ggglm_info(this, info, m, n, p, lda, ldb, err0)
 
         ! Cleanup
         if (copy_a) deallocate(amat_alloc)
-        deallocate(b_scaled, sqrt_w)
+        if (copy_w) deallocate(lmat_alloc)
+        deallocate(d, y, work)
 
-    end function stdlib_linalg_c_weighted_lstsq
-    ! Weighted least-squares: minimize ||D(Ax - b)||^2 where D = diag(sqrt(w))
-    module function stdlib_linalg_z_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(dp), intent(in) :: w(:)
+        call linalg_error_handling(err0, err)
+
+    end function stdlib_linalg_c_generalized_lstsq
+    ! Generalized least-squares: minimize (Ax-b)^T W^{-1} (Ax-b) where W is symmetric/Hermitian positive definite
+    module function stdlib_linalg_z_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        complex(dp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         complex(dp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         complex(dp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(dp), optional, intent(in) :: cond
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
@@ -3188,34 +3278,32 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
 
         ! Local variables
         type(linalg_state_type) :: err0
-        integer(ilp) :: m, n
-        logical(lk) :: copy_a
-        complex(dp), pointer :: amat(:,:)
-        complex(dp), allocatable, target :: amat_alloc(:,:)
-        complex(dp), allocatable :: b_scaled(:)
-        real(dp), allocatable :: sqrt_w(:)
-        character(*), parameter :: this = 'weighted_lstsq'
+        integer(ilp) :: m, n, p, lda, ldb, lwork, info
+        logical(lk) :: copy_a, copy_w, is_prefactored
+        complex(dp), pointer :: amat(:,:), lmat(:,:)
+        complex(dp), allocatable, target :: amat_alloc(:,:), lmat_alloc(:,:)
+        complex(dp), allocatable :: d(:), y(:), work(:)
+        character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
         n = size(a, 2, kind=ilp)
+        p = m  ! For GLS, B is m×m
 
-        ! Allocate result (even on error, to prevent segfault on return)
+        ! Allocate result early (prevents segfault on error return)
         allocate(x(n))
 
         ! Validate matrix dimensions
         if (m < 1 .or. n < 1) then
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, 'Invalid matrix size a(m, n) =', [m, n])
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        ! Validate inputs
-        if (size(w, kind=ilp) /= m) then
+        ! Validate sizes
+        if (size(w, 1, kind=ilp) /= m .or. size(w, 2, kind=ilp) /= m) then
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
-                   'Weight vector size must match number of rows:', size(w, kind=ilp), '/=', m)
+                   'Covariance matrix must be square m×m:', shape(w, kind=ilp))
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
@@ -3223,24 +3311,22 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
             err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
                    'Right-hand side size must match rows of A:', size(b, kind=ilp), '/=', m)
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        if (any(w <= 0.0_dp)) then
-            err0 = linalg_state_type(this, LINALG_VALUE_ERROR, 'Weights must be positive')
+        if (m < n) then
+            err0 = linalg_state_type(this, LINALG_VALUE_ERROR, &
+                   'GGGLM requires m >= n (overdetermined or square):', m, '<', n)
             call linalg_error_handling(err0, err)
-            if (present(rank)) rank = 0
             return
         end if
 
-        ! Can A be overwritten? By default, do not overwrite
+        ! Process options
+        is_prefactored = optval(prefactored_w, .false._lk)
         copy_a = .not. optval(overwrite_a, .false._lk)
+        copy_w = .not. optval(overwrite_w, .false._lk)
 
-        ! Compute sqrt of weights
-        sqrt_w = sqrt(w)
-
-        ! Handle A matrix: either copy or use original
+        ! Handle A matrix
         if (copy_a) then
             allocate(amat_alloc(m, n), source=a)
             amat => amat_alloc
@@ -3248,22 +3334,56 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
             amat => a
         end if
 
-        ! Scale rows of A by sqrt(w) using LAPACK's lascl2
-        call lascl2(m, n, sqrt_w, amat, m)
+        ! Handle covariance/matrix square root
+        if (copy_w) then
+            allocate(lmat_alloc(m, m), source=w)
+            lmat => lmat_alloc
+        else
+            lmat => w
+        end if
 
-        ! Scale b
-        b_scaled = sqrt_w * b
+        if (.not. is_prefactored) then
+            ! Compute Cholesky factorization: W = L * L^T (real) or W = L * L^H (complex)
+            call cholesky(lmat, lower=.true._lk, other_zeroed=.true._lk, err=err0)
+            if (err0%error()) then
+                ! Cleanup before early return
+                if (copy_a) deallocate(amat_alloc)
+                if (copy_w) deallocate(lmat_alloc)
+                call linalg_error_handling(err0, err)
+                return
+            end if
+        end if
+        ! If prefactored_w=.true., user provides a valid matrix square root B where W = B*B^T.
+        ! This can be a Cholesky factor OR any other valid square root (e.g., SVD-based).
+        ! We do not modify the user's input.
 
-        ! Solve transformed OLS problem using local error state
-        call stdlib_linalg_z_solve_lstsq_one(amat, b_scaled, x, cond=cond, overwrite_a=.true., rank=rank, err=err0)
-        
-        ! Propagate error with updated location
-        call linalg_error_handling(err0, err, where_at=this)
+        ! Prepare for GGGLM
+        allocate(d(m), source=b)
+        allocate(y(p))
+
+        lda = m
+        ldb = m
+
+        ! Workspace query
+        allocate(work(1))
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, -1_ilp, info)
+        lwork = ceiling(real(work(1), kind=dp), kind=ilp)
+        deallocate(work)
+        allocate(work(lwork))
+
+        ! Solve GLS via GGGLM
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, lwork, info)
+
+        ! Handle errors
+        call handle_ggglm_info(this, info, m, n, p, lda, ldb, err0)
 
         ! Cleanup
         if (copy_a) deallocate(amat_alloc)
-        deallocate(b_scaled, sqrt_w)
+        if (copy_w) deallocate(lmat_alloc)
+        deallocate(d, y, work)
 
-    end function stdlib_linalg_z_weighted_lstsq
+        call linalg_error_handling(err0, err)
+
+    end function stdlib_linalg_z_generalized_lstsq
 
 end submodule stdlib_linalg_least_squares

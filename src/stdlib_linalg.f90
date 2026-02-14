@@ -30,7 +30,6 @@ module stdlib_linalg
   public :: lstsq_space
   public :: constrained_lstsq
   public :: constrained_lstsq_space
-  public :: generalized_lstsq
   public :: norm
   public :: mnorm
   public :: get_norm
@@ -1679,97 +1678,6 @@ module stdlib_linalg
     end subroutine stdlib_linalg_z_constrained_lstsq_space
   end interface
 
-  interface generalized_lstsq
-    !! version: experimental
-    !!
-    !! Computes the generalized least-squares solution to \( \min_x (Ax-b)^T W^{-1} (Ax-b) \)
-    !! ([Specification](../page/specs/stdlib_linalg.html#generalized-lstsq))
-    !!
-    !!### Summary
-    !! Function interface for computing generalized least-squares via GGGLM.
-    !!
-    !!### Description
-    !!
-    !! This interface provides methods for computing generalized least-squares
-    !! with a symmetric (real) or Hermitian (complex) positive definite covariance matrix.
-    !! Supported data types include `real` and `complex`.
-    !!
-    !!@note The solution is based on LAPACK's `*GGGLM` routine.
-    !!
-    module function stdlib_linalg_s_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
-        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
-        real(sp), intent(inout), target :: w(:,:)
-        !> Input matrix a[m,n]
-        real(sp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
-        real(sp), intent(in) :: b(:)
-        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
-        logical(lk), optional, intent(in) :: prefactored_w
-        !> [optional] Can A data be overwritten and destroyed?
-        logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Can W data be overwritten and destroyed? Default: .false.
-        logical(lk), optional, intent(in) :: overwrite_w
-        !> [optional] state return flag. On error if not requested, the code will stop
-        type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
-        real(sp), allocatable :: x(:)
-    end function stdlib_linalg_s_generalized_lstsq
-    module function stdlib_linalg_d_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
-        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
-        real(dp), intent(inout), target :: w(:,:)
-        !> Input matrix a[m,n]
-        real(dp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
-        real(dp), intent(in) :: b(:)
-        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
-        logical(lk), optional, intent(in) :: prefactored_w
-        !> [optional] Can A data be overwritten and destroyed?
-        logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Can W data be overwritten and destroyed? Default: .false.
-        logical(lk), optional, intent(in) :: overwrite_w
-        !> [optional] state return flag. On error if not requested, the code will stop
-        type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
-        real(dp), allocatable :: x(:)
-    end function stdlib_linalg_d_generalized_lstsq
-    module function stdlib_linalg_c_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
-        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
-        complex(sp), intent(inout), target :: w(:,:)
-        !> Input matrix a[m,n]
-        complex(sp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
-        complex(sp), intent(in) :: b(:)
-        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
-        logical(lk), optional, intent(in) :: prefactored_w
-        !> [optional] Can A data be overwritten and destroyed?
-        logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Can W data be overwritten and destroyed? Default: .false.
-        logical(lk), optional, intent(in) :: overwrite_w
-        !> [optional] state return flag. On error if not requested, the code will stop
-        type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
-        complex(sp), allocatable :: x(:)
-    end function stdlib_linalg_c_generalized_lstsq
-    module function stdlib_linalg_z_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
-        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
-        complex(dp), intent(inout), target :: w(:,:)
-        !> Input matrix a[m,n]
-        complex(dp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
-        complex(dp), intent(in) :: b(:)
-        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
-        logical(lk), optional, intent(in) :: prefactored_w
-        !> [optional] Can A data be overwritten and destroyed?
-        logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Can W data be overwritten and destroyed? Default: .false.
-        logical(lk), optional, intent(in) :: overwrite_w
-        !> [optional] state return flag. On error if not requested, the code will stop
-        type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
-        complex(dp), allocatable :: x(:)
-    end function stdlib_linalg_z_generalized_lstsq
-  end interface generalized_lstsq
-
   ! QR factorization of rank-2 array A
   interface qr
     !! version: experimental 
@@ -2235,8 +2143,7 @@ module stdlib_linalg
     !! This interface provides methods for computing the determinant of a matrix.
     !! Supported data types include `real` and `complex`.
     !! 
-    !!@note The provided functions are intended for square matrices only.          
-    !!@note BLAS/LAPACK backends do not currently support extended precision (``xdp``).
+    !!@note The provided functions are intended for square matrices only.
     !! 
     !!### Example
     !!
@@ -2281,7 +2188,6 @@ module stdlib_linalg
     !! Supported data types include real and complex.
     !!
     !!@note The provided functions are intended for square matrices.
-    !!@note BLAS/LAPACK backends do not currently support extended precision (``xdp``).
     !!
     !!### Example
     !!
@@ -2785,7 +2691,6 @@ module stdlib_linalg
      !! Preallocated space for both eigenvalues `lambda` and the eigenvector matrices must be user-provided.      
      !! 
      !!@note The solution is based on LAPACK's general eigenproblem solvers `*GEEV`.
-     !!@note BLAS/LAPACK backends do not currently support extended precision (``xdp``).
      !!       
     module subroutine stdlib_linalg_eig_standard_s(a,lambda,right,left, &
                                                       overwrite_a,err)
@@ -3127,7 +3032,6 @@ module stdlib_linalg
      !! as an optional `type(linalg_state_type)` output flag. 
      !! 
      !!@note The solution is based on LAPACK's general eigenproblem solvers `*GEEV`.
-     !!@note BLAS/LAPACK backends do not currently support extended precision (``xdp``).
      !!       
     module function stdlib_linalg_eigvals_standard_s(a,err) result(lambda)
      !! Return an array of eigenvalues of matrix A.
@@ -3305,7 +3209,6 @@ module stdlib_linalg
      !! Preallocated space for both eigenvalues `lambda` and the eigenvector matrix must be user-provided.      
      !! 
      !!@note The solution is based on LAPACK's eigenproblem solvers `*SYEV`/`*HEEV`.
-     !!@note BLAS/LAPACK backends do not currently support extended precision (``xdp``).
      !!      
     module subroutine stdlib_linalg_eigh_s(a,lambda,vectors,upper_a,overwrite_a,err)
      !! Eigendecomposition of a real symmetric or complex Hermitian matrix A returning an array `lambda` 
@@ -3394,7 +3297,6 @@ module stdlib_linalg
      !! as an optional `type(linalg_state_type)` output flag. 
      !! 
      !!@note The solution is based on LAPACK's eigenproblem solvers `*SYEV`/`*HEEV`.
-     !!@note BLAS/LAPACK backends do not currently support extended precision (``xdp``).
      !!         
     module function stdlib_linalg_eigvalsh_s(a,upper_a,err) result(lambda)
      !! Return an array of eigenvalues of real symmetric / complex hermitian A

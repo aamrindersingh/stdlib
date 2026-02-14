@@ -30,8 +30,8 @@ module stdlib_linalg
   public :: lstsq_space
   public :: constrained_lstsq
   public :: constrained_lstsq_space
-  public :: weighted_lstsq
-  public :: solve_weighted_lstsq
+  public :: generalized_lstsq
+  public :: solve_generalized_lstsq
   public :: norm
   public :: mnorm
   public :: get_norm
@@ -1680,193 +1680,187 @@ module stdlib_linalg
     end subroutine stdlib_linalg_z_constrained_lstsq_space
   end interface
 
-  ! Weighted least-squares: minimize ||D(Ax - b)||^2 where D = diag(sqrt(w))
-  interface weighted_lstsq
+  interface generalized_lstsq
     !! version: experimental
     !!
-    !! Computes the weighted least-squares solution to \( \min_x \|D(Ax - b)\|_2^2 \)
-    !! ([Specification](../page/specs/stdlib_linalg.html#weighted-lstsq))
+    !! Computes the generalized least-squares solution to \( \min_x (Ax-b)^T W^{-1} (Ax-b) \)
+    !! ([Specification](../page/specs/stdlib_linalg.html#generalized-lstsq))
     !!
     !!### Summary
-    !! Function interface for computing weighted least-squares via row scaling.
+    !! Function interface for computing generalized least-squares via GGGLM.
     !!
     !!### Description
     !!
-    !! This interface provides methods for computing weighted least-squares by
-    !! transforming to ordinary least-squares through row scaling.
+    !! This interface provides methods for computing generalized least-squares
+    !! with a symmetric (real) or Hermitian (complex) positive definite covariance matrix.
     !! Supported data types include `real` and `complex`.
     !!
-    !!@note The solution is based on LAPACK's `*GELSD` after applying diagonal weights.
-    !!@warning Avoid extreme weight ratios (e.g., max(w)/min(w) > 1e6) as this may 
-    !!         cause loss of precision in the SVD-based solver.
+    !!@note The solution is based on LAPACK's `*GGGLM` routine.
     !!
-    module function stdlib_linalg_s_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(sp), intent(in) :: w(:)
+    module function stdlib_linalg_s_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        real(sp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         real(sp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         real(sp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(sp), optional, intent(in) :: cond
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
         real(sp), allocatable, target :: x(:)
-    end function stdlib_linalg_s_weighted_lstsq
-    module function stdlib_linalg_d_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(dp), intent(in) :: w(:)
+    end function stdlib_linalg_s_generalized_lstsq
+    module function stdlib_linalg_d_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        real(dp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         real(dp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         real(dp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(dp), optional, intent(in) :: cond
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
         real(dp), allocatable, target :: x(:)
-    end function stdlib_linalg_d_weighted_lstsq
-    module function stdlib_linalg_c_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(sp), intent(in) :: w(:)
+    end function stdlib_linalg_d_generalized_lstsq
+    module function stdlib_linalg_c_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        complex(sp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         complex(sp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         complex(sp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(sp), optional, intent(in) :: cond
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
         complex(sp), allocatable, target :: x(:)
-    end function stdlib_linalg_c_weighted_lstsq
-    module function stdlib_linalg_z_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
-        !> Weight vector (must be positive, always real)
-        real(dp), intent(in) :: w(:)
+    end function stdlib_linalg_c_generalized_lstsq
+    module function stdlib_linalg_z_generalized_lstsq(w,a,b,prefactored_w,overwrite_a,overwrite_w,err) result(x)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        complex(dp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         complex(dp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         complex(dp), intent(in) :: b(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(dp), optional, intent(in) :: cond
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
         complex(dp), allocatable, target :: x(:)
-    end function stdlib_linalg_z_weighted_lstsq
-  end interface weighted_lstsq
+    end function stdlib_linalg_z_generalized_lstsq
+  end interface generalized_lstsq
 
-  ! Weighted least-squares subroutine: minimize ||D(Ax - b)||^2 where D = diag(sqrt(w))
-  interface solve_weighted_lstsq
+  interface solve_generalized_lstsq
     !! version: experimental
     !!
-    !! Computes the weighted least-squares solution to \( \min_x \|D(Ax - b)\|_2^2 \)
-    !! ([Specification](../page/specs/stdlib_linalg.html#solve-weighted-lstsq-compute-the-weighted-least-squares-solution-to-a-linear-matrix-equation-subroutine-interface))
+    !! Computes the generalized least-squares solution to \( \min_x (Ax-b)^T W^{-1} (Ax-b) \)
+    !! ([Specification](../page/specs/stdlib_linalg.html#solve-generalized-lstsq))
     !!
     !!### Summary
-    !! Subroutine interface for computing weighted least-squares via row scaling.
+    !! Subroutine interface for computing generalized least-squares via GGGLM.
     !!
     !!### Description
     !!
-    !! This interface provides methods for computing weighted least-squares by
-    !! transforming to ordinary least-squares through row scaling, using a subroutine.
+    !! This interface provides methods for computing generalized least-squares
+    !! with a symmetric (real) or Hermitian (complex) positive definite covariance matrix.
     !! Supported data types include `real` and `complex`.
     !!
-    !!@note The solution is based on LAPACK's `*GELSD` after applying diagonal weights.
-    !!@warning Avoid extreme weight ratios (e.g., max(w)/min(w) > 1e6) as this may
-    !!         cause loss of precision in the SVD-based solver.
+    !!@note The solution is based on LAPACK's `*GGGLM` routine.
     !!
-    module subroutine stdlib_linalg_s_solve_weighted_lstsq(w,a,b,x,cond,overwrite_a,rank,err)
-        !> Weight vector (must be positive, always real)
-        real(sp), intent(in) :: w(:)
+    module subroutine stdlib_linalg_s_solve_generalized_lstsq(w,a,b,x,prefactored_w,overwrite_a,overwrite_w,err)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        real(sp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         real(sp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         real(sp), intent(in) :: b(:)
-        !> Result array x[n]
-        real(sp), intent(inout), contiguous, target :: x(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(sp), optional, intent(in) :: cond
+        !> Solution vector x[n]
+        real(sp), intent(out) :: x(:)
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
-    end subroutine stdlib_linalg_s_solve_weighted_lstsq
-    module subroutine stdlib_linalg_d_solve_weighted_lstsq(w,a,b,x,cond,overwrite_a,rank,err)
-        !> Weight vector (must be positive, always real)
-        real(dp), intent(in) :: w(:)
+    end subroutine stdlib_linalg_s_solve_generalized_lstsq
+    module subroutine stdlib_linalg_d_solve_generalized_lstsq(w,a,b,x,prefactored_w,overwrite_a,overwrite_w,err)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        real(dp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         real(dp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         real(dp), intent(in) :: b(:)
-        !> Result array x[n]
-        real(dp), intent(inout), contiguous, target :: x(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(dp), optional, intent(in) :: cond
+        !> Solution vector x[n]
+        real(dp), intent(out) :: x(:)
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
-    end subroutine stdlib_linalg_d_solve_weighted_lstsq
-    module subroutine stdlib_linalg_c_solve_weighted_lstsq(w,a,b,x,cond,overwrite_a,rank,err)
-        !> Weight vector (must be positive, always real)
-        real(sp), intent(in) :: w(:)
+    end subroutine stdlib_linalg_d_solve_generalized_lstsq
+    module subroutine stdlib_linalg_c_solve_generalized_lstsq(w,a,b,x,prefactored_w,overwrite_a,overwrite_w,err)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        complex(sp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         complex(sp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         complex(sp), intent(in) :: b(:)
-        !> Result array x[n]
-        complex(sp), intent(inout), contiguous, target :: x(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(sp), optional, intent(in) :: cond
+        !> Solution vector x[n]
+        complex(sp), intent(out) :: x(:)
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
-    end subroutine stdlib_linalg_c_solve_weighted_lstsq
-    module subroutine stdlib_linalg_z_solve_weighted_lstsq(w,a,b,x,cond,overwrite_a,rank,err)
-        !> Weight vector (must be positive, always real)
-        real(dp), intent(in) :: w(:)
+    end subroutine stdlib_linalg_c_solve_generalized_lstsq
+    module subroutine stdlib_linalg_z_solve_generalized_lstsq(w,a,b,x,prefactored_w,overwrite_a,overwrite_w,err)
+        !> Covariance matrix W[m,m] (symmetric/Hermitian positive definite) or its matrix square root
+        complex(dp), intent(inout), target :: w(:,:)
         !> Input matrix a[m,n]
         complex(dp), intent(inout), target :: a(:,:)
         !> Right hand side vector b[m]
         complex(dp), intent(in) :: b(:)
-        !> Result array x[n]
-        complex(dp), intent(inout), contiguous, target :: x(:)
-        !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
-        real(dp), optional, intent(in) :: cond
+        !> Solution vector x[n]
+        complex(dp), intent(out) :: x(:)
+        !> [optional] Is W already a matrix square root (e.g., Cholesky factor)? Default: .false.
+        logical(lk), optional, intent(in) :: prefactored_w
         !> [optional] Can A data be overwritten and destroyed?
         logical(lk), optional, intent(in) :: overwrite_a
-        !> [optional] Return rank of A
-        integer(ilp), optional, intent(out) :: rank
+        !> [optional] Can W data be overwritten and destroyed? Default: .false.
+        logical(lk), optional, intent(in) :: overwrite_w
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
-    end subroutine stdlib_linalg_z_solve_weighted_lstsq
-  end interface solve_weighted_lstsq
+    end subroutine stdlib_linalg_z_solve_generalized_lstsq
+  end interface solve_generalized_lstsq
 
   ! QR factorization of rank-2 array A
   interface qr

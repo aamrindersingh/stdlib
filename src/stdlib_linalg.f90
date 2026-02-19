@@ -1716,7 +1716,7 @@ module stdlib_linalg
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
-        real(sp), allocatable, target :: x(:)
+        real(sp), allocatable :: x(:)
     end function stdlib_linalg_s_weighted_lstsq
     module function stdlib_linalg_d_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
         !> Weight vector (must be positive, always real)
@@ -1734,7 +1734,7 @@ module stdlib_linalg
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
-        real(dp), allocatable, target :: x(:)
+        real(dp), allocatable :: x(:)
     end function stdlib_linalg_d_weighted_lstsq
     module function stdlib_linalg_c_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
         !> Weight vector (must be positive, always real)
@@ -1752,7 +1752,7 @@ module stdlib_linalg
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
-        complex(sp), allocatable, target :: x(:)
+        complex(sp), allocatable :: x(:)
     end function stdlib_linalg_c_weighted_lstsq
     module function stdlib_linalg_z_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
         !> Weight vector (must be positive, always real)
@@ -1770,7 +1770,7 @@ module stdlib_linalg
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x[n]
-        complex(dp), allocatable, target :: x(:)
+        complex(dp), allocatable :: x(:)
     end function stdlib_linalg_z_weighted_lstsq
   end interface weighted_lstsq
 

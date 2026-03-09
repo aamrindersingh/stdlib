@@ -2877,9 +2877,9 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     module function stdlib_linalg_s_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
         !> Weight vector (must be positive, always real)
         real(sp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
+        !> Input matrix a(m,n)
         real(sp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
+        !> Right hand side vector b(m)
         real(sp), intent(in) :: b(:)
         !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
         real(sp), optional, intent(in) :: cond
@@ -2889,7 +2889,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         integer(ilp), optional, intent(out) :: rank
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
+        !> Result array x(n)
         real(sp), allocatable :: x(:)
 
         integer(ilp) :: n
@@ -2913,10 +2913,10 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     !!
     !! This subroutine computes the weighted least-squares solution of a linear matrix problem.
     !!
-    !! param: w Weight vector of size [m] (must be positive, always real).
-    !! param: a Input matrix of size [m,n].
-    !! param: b Right-hand-side vector of size [m].
-    !! param: x Solution vector of size [n].
+    !! param: w Weight vector of size (m) (must be positive, always real).
+    !! param: a Input matrix of size (m,n).
+    !! param: b Right-hand-side vector of size (m).
+    !! param: x Solution vector of size (n).
     !! param: cond [optional] Real input threshold indicating that singular values `s_i <= cond*maxval(s)`
     !!        do not contribute to the matrix rank.
     !! param: overwrite_a [optional] Flag indicating if the input matrix can be overwritten.
@@ -2925,11 +2925,11 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     !!
         !> Weight vector (must be positive, always real)
         real(sp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
+        !> Input matrix a(m,n)
         real(sp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
+        !> Right hand side vector b(m)
         real(sp), intent(in) :: b(:)
-        !> Result array x[n]
+        !> Result array x(n)
         real(sp), intent(inout), contiguous, target :: x(:)
         !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
         real(sp), optional, intent(in) :: cond
@@ -3020,9 +3020,9 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     module function stdlib_linalg_d_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
         !> Weight vector (must be positive, always real)
         real(dp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
+        !> Input matrix a(m,n)
         real(dp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
+        !> Right hand side vector b(m)
         real(dp), intent(in) :: b(:)
         !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
         real(dp), optional, intent(in) :: cond
@@ -3032,7 +3032,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         integer(ilp), optional, intent(out) :: rank
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
+        !> Result array x(n)
         real(dp), allocatable :: x(:)
 
         integer(ilp) :: n
@@ -3056,10 +3056,10 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     !!
     !! This subroutine computes the weighted least-squares solution of a linear matrix problem.
     !!
-    !! param: w Weight vector of size [m] (must be positive, always real).
-    !! param: a Input matrix of size [m,n].
-    !! param: b Right-hand-side vector of size [m].
-    !! param: x Solution vector of size [n].
+    !! param: w Weight vector of size (m) (must be positive, always real).
+    !! param: a Input matrix of size (m,n).
+    !! param: b Right-hand-side vector of size (m).
+    !! param: x Solution vector of size (n).
     !! param: cond [optional] Real input threshold indicating that singular values `s_i <= cond*maxval(s)`
     !!        do not contribute to the matrix rank.
     !! param: overwrite_a [optional] Flag indicating if the input matrix can be overwritten.
@@ -3068,11 +3068,11 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     !!
         !> Weight vector (must be positive, always real)
         real(dp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
+        !> Input matrix a(m,n)
         real(dp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
+        !> Right hand side vector b(m)
         real(dp), intent(in) :: b(:)
-        !> Result array x[n]
+        !> Result array x(n)
         real(dp), intent(inout), contiguous, target :: x(:)
         !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
         real(dp), optional, intent(in) :: cond
@@ -3163,9 +3163,9 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     module function stdlib_linalg_c_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
         !> Weight vector (must be positive, always real)
         real(sp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
+        !> Input matrix a(m,n)
         complex(sp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
+        !> Right hand side vector b(m)
         complex(sp), intent(in) :: b(:)
         !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
         real(sp), optional, intent(in) :: cond
@@ -3175,7 +3175,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         integer(ilp), optional, intent(out) :: rank
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
+        !> Result array x(n)
         complex(sp), allocatable :: x(:)
 
         integer(ilp) :: n
@@ -3199,10 +3199,10 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     !!
     !! This subroutine computes the weighted least-squares solution of a linear matrix problem.
     !!
-    !! param: w Weight vector of size [m] (must be positive, always real).
-    !! param: a Input matrix of size [m,n].
-    !! param: b Right-hand-side vector of size [m].
-    !! param: x Solution vector of size [n].
+    !! param: w Weight vector of size (m) (must be positive, always real).
+    !! param: a Input matrix of size (m,n).
+    !! param: b Right-hand-side vector of size (m).
+    !! param: x Solution vector of size (n).
     !! param: cond [optional] Real input threshold indicating that singular values `s_i <= cond*maxval(s)`
     !!        do not contribute to the matrix rank.
     !! param: overwrite_a [optional] Flag indicating if the input matrix can be overwritten.
@@ -3211,11 +3211,11 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     !!
         !> Weight vector (must be positive, always real)
         real(sp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
+        !> Input matrix a(m,n)
         complex(sp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
+        !> Right hand side vector b(m)
         complex(sp), intent(in) :: b(:)
-        !> Result array x[n]
+        !> Result array x(n)
         complex(sp), intent(inout), contiguous, target :: x(:)
         !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
         real(sp), optional, intent(in) :: cond
@@ -3306,9 +3306,9 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     module function stdlib_linalg_z_weighted_lstsq(w,a,b,cond,overwrite_a,rank,err) result(x)
         !> Weight vector (must be positive, always real)
         real(dp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
+        !> Input matrix a(m,n)
         complex(dp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
+        !> Right hand side vector b(m)
         complex(dp), intent(in) :: b(:)
         !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
         real(dp), optional, intent(in) :: cond
@@ -3318,7 +3318,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         integer(ilp), optional, intent(out) :: rank
         !> [optional] state return flag. On error if not requested, the code will stop
         type(linalg_state_type), optional, intent(out) :: err
-        !> Result array x[n]
+        !> Result array x(n)
         complex(dp), allocatable :: x(:)
 
         integer(ilp) :: n
@@ -3342,10 +3342,10 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     !!
     !! This subroutine computes the weighted least-squares solution of a linear matrix problem.
     !!
-    !! param: w Weight vector of size [m] (must be positive, always real).
-    !! param: a Input matrix of size [m,n].
-    !! param: b Right-hand-side vector of size [m].
-    !! param: x Solution vector of size [n].
+    !! param: w Weight vector of size (m) (must be positive, always real).
+    !! param: a Input matrix of size (m,n).
+    !! param: b Right-hand-side vector of size (m).
+    !! param: x Solution vector of size (n).
     !! param: cond [optional] Real input threshold indicating that singular values `s_i <= cond*maxval(s)`
     !!        do not contribute to the matrix rank.
     !! param: overwrite_a [optional] Flag indicating if the input matrix can be overwritten.
@@ -3354,11 +3354,11 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
     !!
         !> Weight vector (must be positive, always real)
         real(dp), intent(in) :: w(:)
-        !> Input matrix a[m,n]
+        !> Input matrix a(m,n)
         complex(dp), intent(inout), target :: a(:,:)
-        !> Right hand side vector b[m]
+        !> Right hand side vector b(m)
         complex(dp), intent(in) :: b(:)
-        !> Result array x[n]
+        !> Result array x(n)
         complex(dp), intent(inout), contiguous, target :: x(:)
         !> [optional] cutoff for rank evaluation: singular values s(i)<=cond*maxval(s) are considered 0.
         real(dp), optional, intent(in) :: cond

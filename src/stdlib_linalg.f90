@@ -1710,7 +1710,7 @@ module stdlib_linalg
         logical(lk), optional, intent(in) :: overwrite_a
         !> [optional] Can W data be overwritten and destroyed? Default: .false.
         logical(lk), optional, intent(in) :: overwrite_w
-        !> [optional] state return flag. On error if not requested, the code will stop
+        !> [optional] state return flag. On error if not requested, the code will trigger an error stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x(n)
         real(sp), allocatable :: x(:)
@@ -1728,7 +1728,7 @@ module stdlib_linalg
         logical(lk), optional, intent(in) :: overwrite_a
         !> [optional] Can W data be overwritten and destroyed? Default: .false.
         logical(lk), optional, intent(in) :: overwrite_w
-        !> [optional] state return flag. On error if not requested, the code will stop
+        !> [optional] state return flag. On error if not requested, the code will trigger an error stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x(n)
         real(dp), allocatable :: x(:)
@@ -1746,7 +1746,7 @@ module stdlib_linalg
         logical(lk), optional, intent(in) :: overwrite_a
         !> [optional] Can W data be overwritten and destroyed? Default: .false.
         logical(lk), optional, intent(in) :: overwrite_w
-        !> [optional] state return flag. On error if not requested, the code will stop
+        !> [optional] state return flag. On error if not requested, the code will trigger an error stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x(n)
         complex(sp), allocatable :: x(:)
@@ -1764,7 +1764,7 @@ module stdlib_linalg
         logical(lk), optional, intent(in) :: overwrite_a
         !> [optional] Can W data be overwritten and destroyed? Default: .false.
         logical(lk), optional, intent(in) :: overwrite_w
-        !> [optional] state return flag. On error if not requested, the code will stop
+        !> [optional] state return flag. On error if not requested, the code will trigger an error stop
         type(linalg_state_type), optional, intent(out) :: err
         !> Result array x(n)
         complex(dp), allocatable :: x(:)

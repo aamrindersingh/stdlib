@@ -3091,10 +3091,8 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         ldb = m
 
         ! Workspace query
-        allocate(work(1))
-        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, -1_ilp, info)
-        lwork = ceiling(real(work(1), kind=sp), kind=ilp)
-        deallocate(work)
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work_size, -1_ilp, info)
+        lwork = ceiling(real(work_size(1), kind=sp), kind=ilp)
         allocate(work(lwork))
 
         ! Solve GLS via GGGLM
@@ -3224,10 +3222,8 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         ldb = m
 
         ! Workspace query
-        allocate(work(1))
-        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, -1_ilp, info)
-        lwork = ceiling(real(work(1), kind=dp), kind=ilp)
-        deallocate(work)
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work_size, -1_ilp, info)
+        lwork = ceiling(real(work_size(1), kind=dp), kind=ilp)
         allocate(work(lwork))
 
         ! Solve GLS via GGGLM
@@ -3357,10 +3353,8 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         ldb = m
 
         ! Workspace query
-        allocate(work(1))
-        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, -1_ilp, info)
-        lwork = ceiling(real(work(1), kind=sp), kind=ilp)
-        deallocate(work)
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work_size, -1_ilp, info)
+        lwork = ceiling(real(work_size(1), kind=sp), kind=ilp)
         allocate(work(lwork))
 
         ! Solve GLS via GGGLM
@@ -3490,10 +3484,8 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         ldb = m
 
         ! Workspace query
-        allocate(work(1))
-        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work, -1_ilp, info)
-        lwork = ceiling(real(work(1), kind=dp), kind=ilp)
-        deallocate(work)
+        call ggglm(m, n, p, amat, lda, lmat, ldb, d, x, y, work_size, -1_ilp, info)
+        lwork = ceiling(real(work_size(1), kind=dp), kind=ilp)
         allocate(work(lwork))
 
         ! Solve GLS via GGGLM

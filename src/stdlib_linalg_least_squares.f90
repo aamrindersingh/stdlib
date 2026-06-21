@@ -3004,6 +3004,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         real(sp), pointer :: amat(:,:), lmat(:,:)
         real(sp), allocatable, target :: amat_alloc(:,:), lmat_alloc(:,:)
         real(sp), allocatable :: d(:), y(:), work(:)
+        real(sp) :: work_size(1)
         character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
@@ -3136,6 +3137,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         real(dp), pointer :: amat(:,:), lmat(:,:)
         real(dp), allocatable, target :: amat_alloc(:,:), lmat_alloc(:,:)
         real(dp), allocatable :: d(:), y(:), work(:)
+        real(dp) :: work_size(1)
         character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
@@ -3268,6 +3270,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         complex(sp), pointer :: amat(:,:), lmat(:,:)
         complex(sp), allocatable, target :: amat_alloc(:,:), lmat_alloc(:,:)
         complex(sp), allocatable :: d(:), y(:), work(:)
+        complex(sp) :: work_size(1)
         character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
@@ -3400,6 +3403,7 @@ submodule (stdlib_linalg) stdlib_linalg_least_squares
         complex(dp), pointer :: amat(:,:), lmat(:,:)
         complex(dp), allocatable, target :: amat_alloc(:,:), lmat_alloc(:,:)
         complex(dp), allocatable :: d(:), y(:), work(:)
+        complex(dp) :: work_size(1)
         character(*), parameter :: this = 'generalized_lstsq'
 
         m = size(a, 1, kind=ilp)
